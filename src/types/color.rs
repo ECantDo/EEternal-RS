@@ -15,11 +15,7 @@ impl Color {
 
     pub const fn new(value: u8) -> Self {
         debug_assert!(value < Self::NUM as u8);
-        if value == 0 {
-            Self::White
-        } else {
-            Self::Black
-        }
+        unsafe { std::mem::transmute(value) }
     }
 }
 
