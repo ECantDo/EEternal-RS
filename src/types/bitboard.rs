@@ -1,0 +1,111 @@
+use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, Not};
+
+use super::base::{File, Rank};
+use super::square::Square;
+
+#[derive(Copy, Clone, Eq, PartialEq, Default)]
+#[repr(transparent)]
+pub struct Bitboard(pub u64);
+
+impl Bitboard {
+    pub const fn rank(rank: Rank) -> Self {
+        Self(0xFF << (rank as usize * 8))
+    }
+
+    pub const fn file(file: File) -> Self {
+        Self(0x0101010101010101u64 << (file as usize))
+    }
+
+    pub const fn popcount(self) -> usize {
+        self.0.count_ones() as usize
+    }
+
+    pub const fn lsb(self) -> Square {
+        Square::new(self.0.trailing_zeros() as u8)
+    }
+
+    pub const fn msb(self) -> Square {
+        Square::new(63 - self.0.leading_zeros() as u8)
+    }
+
+    pub const fn shift(self, offset: i8) -> Self {
+        if offset > 0 {
+            Self(self.0 << offset)
+        } else {
+            Self(self.0 >> -offset)
+        }
+    }
+
+    pub const fn set(&mut self, square: Square) {
+        self.0 |= 1 << square as u64;
+    }
+
+    pub const fn clear(&mut self, square: Square) {
+        self.0 &= !(1 << square as u64);
+    }
+
+    pub const fn contains(self, square: Square) -> bool {
+        self.0 & (1 << square as u64) != 0
+    }
+}
+
+impl BitAnd for Bitboard {
+    type Output = Self;
+
+    fn bitand(self, rhs: Self) -> Self::Output {
+        Self(self.0 & rhs.0)
+    }
+}
+
+impl BitOr for Bitboard {
+    type Output = Self;
+
+    fn bitor(self, rhs: Self) -> Self::Output {
+        Self(self.0 | rhs.0)
+    }
+}
+
+impl BitXor for Bitboard {
+    type Output = Self;
+
+    fn bitxor(self, rhs: Self) -> Self::Output {
+        Self(self.0 ^ rhs.0)
+    }
+}
+
+impl BitOrAssign for Bitboard {
+    fn bitor_assign(&mut self, rhs: Self) {
+        self.0 |= rhs.0;
+    }
+}
+
+impl BitAndAssign for Bitboard {
+    fn bitand_assign(&mut self, rhs: Self) {
+        self.0 &= rhs.0;
+    }
+}
+
+impl Not for Bitboard {
+    type Output = Self;
+
+    fn not(self) -> Self::Output {
+        Self(!self.0)
+    }
+}
+
+impl std::fmt::Display for Bitboard {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        writeln!(f, "+---+---+---+---+---+---+---+---+")?;
+        for rank in (0..8).rev() {
+            write!(f, "|")?;
+            for file in 0..8 {
+                let square = Square::get_board_square(rank, file);
+                let symbol = if self.contains(square) { 'X' } else { '.' };
+                write!(f, " {symbol} |")?;
+            }
+            writeln!(f, " {}", rank + 1)?;
+            writeln!(f, "+---+---+---+---+---+---+---+---+")?;
+        }
+        writeln!(f, "  a   b   c   d   e   f   g   h")
+    }
+}
