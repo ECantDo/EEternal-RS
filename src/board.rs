@@ -37,15 +37,77 @@ impl Board {
         self.color_bitboards[color]
     }
 
-    pub fn get_all_pieces(&self, pt: PieceType) -> Bitboard {
+    pub fn pieces(&self, pt: PieceType) -> Bitboard {
         self.piece_bitboards[pt]
     }
 
-    pub fn get_piece(&self, piece: Piece) -> Bitboard {
+    pub fn colored_pieces(&self, piece: Piece) -> Bitboard {
         self.piece_bitboards[piece.piece_type()] & self.color_bitboards[piece.color()]
     }
 
-    pub fn occupied(&self) -> Bitboard {
+    pub fn occupancies(&self) -> Bitboard {
         self.color_bitboards[Color::White] | self.color_bitboards[Color::Black]
+    }
+
+    pub const fn full_move_number(&self) -> usize {
+        self.half_move_number / 2
+    }
+
+    pub fn side_to_move(&self) -> Color {
+        Color::new((self.half_move_number & 1) as u8)
+    }
+
+    pub fn hash(&self) -> u64 {
+        self.board_state.hash_keys.zobrist()
+    }
+
+    pub fn add_piece(&mut self, piece: Piece, square: Square) {
+        self.piece_squares[square] = piece;
+        self.color_bitboards[piece.color()].set(square);
+        self.piece_bitboards[piece.piece_type()].set(square);
+        self.board_state.hash_keys.toggle(piece, square);
+    }
+
+    pub fn remove_piece(&mut self, square: Square) -> Piece {
+        let piece = self.piece_squares[square];
+        self.piece_squares[square] = Piece::None;
+        self.color_bitboards[piece.color()].clear(square);
+        self.piece_bitboards[piece.piece_type()].clear(square);
+        self.board_state.hash_keys.toggle(piece, square);
+        piece
+    }
+
+    /// Checks for a material draw
+    pub fn draw_by_material(&self) -> bool {
+        // I will help myself to some other peoples code for this too, I am lazy...
+        let stm = self.side_to_move();
+        if (self.pieces(PieceType::Pawn)
+            | self.pieces(PieceType::Rook)
+            | self.pieces(PieceType::Queen))
+            != Bitboard(0)
+        {
+            return false;
+        }
+
+        let piece_count = self.occupancies().popcount();
+        if piece_count != 4 {
+            return piece_count < 4;
+        }
+
+        // Here on, there are exactly 2 non-king minors
+
+        // Here, each side has one minor
+        let bishop = Piece::new(stm, PieceType::Bishop);
+        let knight = Piece::new(stm, PieceType::Knight);
+        if (self.colored_pieces(bishop) | self.colored_pieces(knight)).popcount() == 1 {
+            //If a king is in a corner, don't auto draw.
+            return (Bitboard::CORNERS & self.pieces(PieceType::King)).is_empty();
+        }
+
+        if self.pieces(PieceType::Knight) != Bitboard(0) {
+            return false;
+        }
+
+        (self.pieces(PieceType::Bishop) & Bitboard::LIGHT_SQUARES).popcount() != 1
     }
 }
