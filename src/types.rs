@@ -1,8 +1,10 @@
 pub mod bitboard;
+pub mod castling;
 pub mod color;
+pub mod hash_keys;
 pub mod piece;
 pub mod square;
-mod castling;
+pub mod zobrist;
 
 // Likely needs to be changed, just some value for now
 pub const MAX_PLY: usize = 256;
