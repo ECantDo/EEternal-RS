@@ -1,3 +1,5 @@
+mod parse;
+
 use crate::types::{
     bitboard::Bitboard,
     castling::Castling,
@@ -57,6 +59,10 @@ impl Board {
         Color::new((self.half_move_number & 1) as u8)
     }
 
+    pub fn en_passant(&self) -> Square {
+        self.board_state.en_passant
+    }
+
     pub fn hash(&self) -> u64 {
         self.board_state.hash_keys.zobrist()
     }
@@ -109,5 +115,49 @@ impl Board {
         }
 
         (self.pieces(PieceType::Bishop) & Bitboard::LIGHT_SQUARES).popcount() != 1
+    }
+
+    pub fn draw_by_fifty_moves(&self) -> bool {
+        self.half_move_number >= 100
+    }
+
+    pub fn is_draw(&self) -> bool {
+        self.draw_by_fifty_moves() || self.draw_by_material() // TODO: Draw by repetition
+    }
+
+    pub fn refresh_hash(&mut self) {
+        self.board_state.hash_keys = HashKeys::default();
+
+        for piece in 0..Piece::NUM {
+            let piece = Piece::from_index(piece);
+            for square in self.colored_pieces(piece) {
+                self.board_state.hash_keys.toggle(piece, square);
+            }
+        }
+
+        if self.en_passant() != Square::None {
+            self.board_state.hash_keys.toggle_en_passant(self.en_passant());
+        }
+
+        if self.side_to_move() == Color::White {
+            self.board_state.hash_keys.toggle_side();
+        }
+
+        self.board_state.hash_keys.toggle_castling(self.board_state.castling);
+    }
+}
+
+impl Default for Board {
+    fn default() -> Self {
+        Self {
+            board_state: BoardState::default(),
+            board_state_stack: Vec::with_capacity(2048),
+
+            half_move_number: 0,
+
+            piece_squares: [Piece::None; Square::NUM],
+            color_bitboards: [Bitboard::default(); Color::NUM],
+            piece_bitboards: [Bitboard::default(); PieceType::NUM],
+        }
     }
 }

@@ -1,4 +1,4 @@
-use std::ops::{Index, IndexMut};
+use std::ops::{BitOrAssign, Index, IndexMut};
 
 use super::square::Square;
 use crate::{board::Board, types::color::Color};
@@ -36,7 +36,6 @@ impl CastlingDirections {
         }
     }
 }
-
 
 impl<T> Index<CastlingDirections> for [T] {
     type Output = T;
@@ -96,5 +95,30 @@ impl<T> Index<Castling> for [T] {
 
     fn index(&self, index: Castling) -> &Self::Output {
         &self[index.raw as usize]
+    }
+}
+
+impl BitOrAssign<CastlingDirections> for Castling {
+    fn bitor_assign(&mut self, rhs: CastlingDirections) {
+        self.raw |= rhs as u8
+    }
+}
+
+impl TryFrom<&str> for Castling {
+    type Error = String;
+    fn try_from(value: &str) -> Result<Castling, Self::Error> {
+        let mut castling: Castling = Castling { raw: 0 };
+        for chr in value.chars() {
+            match chr {
+                'Q' => castling |= CastlingDirections::WhiteQueenside,
+                'K' => castling |= CastlingDirections::WhiteKingside,
+                'q' => castling |= CastlingDirections::BlackQueenside,
+                'k' => castling |= CastlingDirections::BlackKingside,
+                _ => {
+                    return Err(format!("Invalid castling rules {chr}"));
+                }
+            }
+        }
+        Ok(castling)
     }
 }
