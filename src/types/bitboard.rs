@@ -36,6 +36,10 @@ impl Bitboard {
         }
     }
 
+    pub const fn is_empty(self) -> bool {
+        self.0 == 0
+    }
+
     pub const fn set(&mut self, square: Square) {
         self.0 |= 1 << square as u64;
     }
@@ -46,6 +50,20 @@ impl Bitboard {
 
     pub const fn contains(self, square: Square) -> bool {
         self.0 & (1 << square as u64) != 0
+    }
+}
+
+impl Iterator for Bitboard {
+    type Item = Square;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.is_empty() {
+            None
+        } else {
+            let lsb = self.lsb();
+            self.0 &= self.0 - 1;
+            Some(lsb)
+        }
     }
 }
 
