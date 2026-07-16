@@ -49,10 +49,10 @@ impl Piece {
     pub const ALL: [Self; Self::NUM] = [
         Self::WhitePawn,
         Self::BlackPawn,
-        Self::WhiteBishop,
-        Self::BlackBishop,
         Self::WhiteKnight,
         Self::BlackKnight,
+        Self::WhiteBishop,
+        Self::BlackBishop,
         Self::WhiteRook,
         Self::BlackRook,
         Self::WhiteQueen,
