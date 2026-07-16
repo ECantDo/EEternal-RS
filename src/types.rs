@@ -2,6 +2,7 @@ pub mod bitboard;
 pub mod color;
 pub mod piece;
 pub mod square;
+mod castling;
 
 // Likely needs to be changed, just some value for now
 pub const MAX_PLY: usize = 256;
