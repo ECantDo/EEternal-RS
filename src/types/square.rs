@@ -1,7 +1,6 @@
 use std::ops::{Add, BitXor, BitXorAssign, Div, Index, IndexMut};
 
-use super::base::{File, Rank};
-use super::bitboard::Bitboard;
+use super::{File, Rank, bitboard::Bitboard};
 
 #[repr(u8)]
 #[derive(Copy, Clone, Eq, PartialEq, PartialOrd, Debug, Default)]

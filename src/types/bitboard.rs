@@ -1,6 +1,6 @@
 use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, Not};
 
-use super::base::{File, Rank};
+use super::{File, Rank};
 use super::square::Square;
 
 #[derive(Copy, Clone, Eq, PartialEq, Default)]
