@@ -39,6 +39,7 @@ impl Board {
                 let square = Square::get_board_square(rank as u8, file);
 
                 board.add_piece(piece, square);
+                board.board_state.material += piece.value();
                 file += 1;
             }
         }

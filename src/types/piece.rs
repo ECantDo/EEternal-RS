@@ -73,8 +73,25 @@ impl Piece {
         unsafe { std::mem::transmute(self as u8 & 1) }
     }
 
-    pub const fn value(self) -> i32 {
-        self.piece_type().value()
+    // pub const fn value(self) -> i32 {
+    //     self.piece_type().value()
+    // }
+    pub const fn value(self) -> i32 { // Todo: Swap with raw value, not side
+        match self {
+            Self::WhitePawn => 100,
+            Self::WhiteKnight => 300,
+            Self::WhiteBishop => 400,
+            Self::WhiteRook => 600,
+            Self::WhiteQueen => 1100,
+            Self::WhiteKing => 0,
+            Self::BlackPawn => -100,
+            Self::BlackKnight => -300,
+            Self::BlackBishop => -400,
+            Self::BlackRook => -600,
+            Self::BlackQueen => -1100,
+            Self::BlackKing => 0,
+            Self::None => 0,
+        }
     }
 
     pub const fn from_index(i: usize) -> Self {

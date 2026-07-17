@@ -1,6 +1,7 @@
 mod generate_moves;
 mod make_move;
 pub mod parse;
+mod evaluate;
 
 use crate::{
     attacking::{
@@ -24,6 +25,7 @@ struct BoardState {
     en_passant: Square,
     half_move_clock: u8, // For the 50 move rule
     hash_keys: HashKeys,
+    material: i32
 }
 
 #[derive(Clone)]
@@ -77,6 +79,10 @@ impl Board {
 
     pub fn hash(&self) -> u64 {
         self.board_state.hash_keys.zobrist()
+    }
+
+    pub const fn material(&self) -> i32 {
+        self.board_state.material
     }
 
     pub fn add_piece(&mut self, piece: Piece, square: Square) {

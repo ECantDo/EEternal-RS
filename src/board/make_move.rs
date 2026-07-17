@@ -1,9 +1,14 @@
-use crate::board::Board;
-use crate::types::UP_DIR;
-use crate::types::castling::{CASTLING_RIGHTS, castling_rook_squares};
-use crate::types::moves::{Move, MoveFlag};
-use crate::types::piece::{Piece, PieceType};
-use crate::types::square::Square;
+use crate::{
+    board::Board,
+    types::{
+        castling::{castling_rook_squares, CASTLING_RIGHTS},
+        color::Color,
+        moves::{Move, MoveFlag},
+        piece::{Piece, PieceType},
+        square::Square,
+        UP_DIR,
+    },
+};
 
 impl Board {
     pub fn make_move(&mut self, mv: Move) {
@@ -49,7 +54,10 @@ impl Board {
             self.remove_piece(from);
 
             if mv.is_promotion() {
-                self.add_piece(Piece::new(stm, mv.promotion_piece_type()), to);
+                let new_piece = Piece::new(stm, mv.promotion_piece_type());
+                self.add_piece(new_piece, to);
+                self.board_state.material +=
+                    new_piece.value() - Piece::new(stm, PieceType::Pawn).value();
             } else {
                 self.add_piece(piece, to);
 
@@ -62,6 +70,8 @@ impl Board {
             }
         }
 
+        self.board_state.material -= self.board_state.captured.value();
+
         self.board_state
             .hash_keys
             .toggle_castling(self.board_state.castling);
@@ -73,6 +83,9 @@ impl Board {
 
         self.board_state.hash_keys.toggle_side();
         self.half_move_number += 1;
+
+        #[cfg(debug_assertions)]
+        self.assert_material_consistent();
     }
 
     pub fn undo_move(&mut self, mv: Move) {
@@ -90,17 +103,48 @@ impl Board {
             self.add_piece(rook, rook_from);
         } else {
             let moved = self.remove_piece(to);
-            let restored = if mv.is_promotion() { Piece::new(stm, PieceType::Pawn) } else { moved };
+            let restored = if mv.is_promotion() {
+                Piece::new(stm, PieceType::Pawn)
+            } else {
+                moved
+            };
             self.add_piece(restored, from);
 
             if mv.is_en_passant() {
-                let cap_sq = to.shift(-UP_DIR[stm]);
+                let cap_sq = to.shift(UP_DIR[!stm]);
                 self.add_piece(self.board_state.captured, cap_sq);
             } else if mv.is_capture() {
                 self.add_piece(self.board_state.captured, to);
             }
         }
 
+        // The material doesn't need to be changed, it is saved on the stack
+
         self.board_state = self.board_state_stack.pop().unwrap();
+        
+        #[cfg(debug_assertions)]
+        self.assert_material_consistent();
+    }
+
+    #[cfg(debug_assertions)]
+    fn assert_material_consistent(&self) {
+        let mut recomputed = 0;
+        for pt in [
+            PieceType::Pawn,
+            PieceType::Knight,
+            PieceType::Bishop,
+            PieceType::Rook,
+            PieceType::Queen,
+        ] {
+            recomputed +=
+                self.colored_pieces(Color::White, pt).popcount() as i32 * PieceType::value(pt);
+            recomputed -=
+                self.colored_pieces(Color::Black, pt).popcount() as i32 * PieceType::value(pt);
+        }
+        debug_assert_eq!(
+            recomputed * 100 / 100,
+            self.board_state.material,
+            "material cache desynced"
+        );
     }
 }
