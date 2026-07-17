@@ -2,6 +2,7 @@ use std::ops::{BitOrAssign, Index, IndexMut};
 
 use super::square::Square;
 use crate::{board::Board, types::color::Color};
+use crate::types::moves::MoveFlag;
 
 #[derive(Copy, Clone)]
 #[repr(u8)]
@@ -11,6 +12,17 @@ pub enum CastlingDirections {
     BlackKingside = 0b0100,
     BlackQueenside = 0b1000,
 }
+
+pub const CASTLING_RIGHTS: [u8; 64] = {
+    let mut table = [0b1111u8; 64];
+    table[Square::E1 as usize] = 0b1100; // king moves: lose both white rights
+    table[Square::A1 as usize] = 0b1101; // rook moves/captured: lose white queenside
+    table[Square::H1 as usize] = 0b1110; // lose white kingside
+    table[Square::E8 as usize] = 0b0011; // See above, but for black
+    table[Square::A8 as usize] = 0b0111;
+    table[Square::H8 as usize] = 0b1011;
+    table
+};
 
 impl CastlingDirections {
     pub const DIRECTIONS: [[Self; 2]; 2] = [
@@ -26,14 +38,15 @@ impl CastlingDirections {
             Self::BlackQueenside => Square::C8,
         }
     }
+}
 
-    pub const fn rook_square(self) -> Square {
-        match self {
-            Self::WhiteKingside => Square::F1,
-            Self::WhiteQueenside => Square::D1,
-            Self::BlackKingside => Square::F8,
-            Self::BlackQueenside => Square::D8,
-        }
+pub const fn castling_rook_squares(color: Color, flag: MoveFlag) -> (Square, Square) {
+    match (color, flag) {
+        (Color::White, MoveFlag::CastleKingside) => (Square::H1, Square::F1),
+        (Color::White, MoveFlag::CastleQueenside) => (Square::A1, Square::D1),
+        (Color::Black, MoveFlag::CastleKingside) => (Square::H8, Square::F8),
+        (Color::Black, MoveFlag::CastleQueenside) => (Square::A8, Square::D8),
+        _ => unreachable!(),
     }
 }
 
@@ -114,6 +127,7 @@ impl TryFrom<&str> for Castling {
                 'K' => castling |= CastlingDirections::WhiteKingside,
                 'q' => castling |= CastlingDirections::BlackQueenside,
                 'k' => castling |= CastlingDirections::BlackKingside,
+                '-' => (),
                 _ => {
                     return Err(format!("Invalid castling rules {chr}"));
                 }
