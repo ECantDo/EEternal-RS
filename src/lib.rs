@@ -6,9 +6,12 @@ pub mod attacking;
 
 pub mod utils;
 
+pub mod uci;
+
 use crate::types::{bitboard::Bitboard, square::Square};
 
 pub fn initialize() {
     attacking::initialize_lookups();
+    uci::run_uci();
     // Wowww... amazing ... there is so much here... ;-;
 }
