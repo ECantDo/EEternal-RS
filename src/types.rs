@@ -5,6 +5,8 @@ pub mod hash_keys;
 pub mod piece;
 pub mod square;
 pub mod zobrist;
+pub mod moves;
+pub mod move_list;
 
 // Likely needs to be changed, just some value for now
 pub const MAX_PLY: usize = 256;
