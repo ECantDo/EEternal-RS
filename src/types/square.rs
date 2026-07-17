@@ -100,6 +100,12 @@ impl Square {
     pub const fn to_bitboard(self) -> Bitboard {
         Bitboard((1u128 << (self as u8)) as u64)
     }
+
+    pub const fn shift(self, offset: i8) -> Self {
+        let value = self as i8 + offset;
+        debug_assert!(0 <= value && value < Self::NUM as i8);
+        Self::new(value as u8)
+    }
 }
 
 impl TryFrom<&str> for Square {

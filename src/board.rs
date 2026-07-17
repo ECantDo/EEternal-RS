@@ -1,3 +1,4 @@
+mod generate_moves;
 mod parse;
 
 use crate::types::{
@@ -43,8 +44,8 @@ impl Board {
         self.piece_bitboards[pt]
     }
 
-    pub fn colored_pieces(&self, piece: Piece) -> Bitboard {
-        self.piece_bitboards[piece.piece_type()] & self.color_bitboards[piece.color()]
+    pub fn colored_pieces(&self, color: Color, piece_type: PieceType) -> Bitboard {
+        self.piece_bitboards[piece_type] & self.color_bitboards[color]
     }
 
     pub fn occupancies(&self) -> Bitboard {
@@ -103,9 +104,7 @@ impl Board {
         // Here on, there are exactly 2 non-king minors
 
         // Here, each side has one minor
-        let bishop = Piece::new(stm, PieceType::Bishop);
-        let knight = Piece::new(stm, PieceType::Knight);
-        if (self.colored_pieces(bishop) | self.colored_pieces(knight)).popcount() == 1 {
+        if (self.colored_pieces(stm, PieceType::Bishop) | self.colored_pieces(stm, PieceType::Knight)).popcount() == 1 {
             //If a king is in a corner, don't auto draw.
             return (Bitboard::CORNERS & self.pieces(PieceType::King)).is_empty();
         }
@@ -130,20 +129,24 @@ impl Board {
 
         for piece in 0..Piece::NUM {
             let piece = Piece::from_index(piece);
-            for square in self.colored_pieces(piece) {
+            for square in self.colored_pieces(piece.color(), piece.piece_type()) {
                 self.board_state.hash_keys.toggle(piece, square);
             }
         }
 
         if self.en_passant() != Square::None {
-            self.board_state.hash_keys.toggle_en_passant(self.en_passant());
+            self.board_state
+                .hash_keys
+                .toggle_en_passant(self.en_passant());
         }
 
         if self.side_to_move() == Color::White {
             self.board_state.hash_keys.toggle_side();
         }
 
-        self.board_state.hash_keys.toggle_castling(self.board_state.castling);
+        self.board_state
+            .hash_keys
+            .toggle_castling(self.board_state.castling);
     }
 }
 

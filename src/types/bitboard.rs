@@ -49,6 +49,10 @@ impl Bitboard {
         self.0 == 0
     }
 
+    pub const fn not_empty(self) -> bool {
+        self.0 != 0
+    }
+
     pub const fn set(&mut self, square: Square) {
         self.0 |= 1 << square as u64;
     }
