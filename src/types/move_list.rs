@@ -1,4 +1,4 @@
-use super::{MAX_MOVES, moves::Move};
+use super::{moves::Move, MAX_MOVES};
 
 pub struct MoveList {
     moves: [Move; MAX_MOVES],
@@ -35,6 +35,11 @@ impl MoveList {
         debug_assert!(self.len > 0);
         self.len -= 1;
         self.moves[self.len]
+    }
+
+    pub fn get(&self, idx: usize) -> Move {
+        debug_assert!(idx < self.len);
+        self.moves[idx]
     }
 
     /// Swap remove

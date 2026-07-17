@@ -1,14 +1,20 @@
 mod generate_moves;
-pub mod parse;
 mod make_move;
+pub mod parse;
 
-use crate::types::{
-    bitboard::Bitboard,
-    castling::Castling,
-    color::Color,
-    hash_keys::HashKeys,
-    piece::{Piece, PieceType},
-    square::Square,
+use crate::{
+    attacking::{
+        get_bishop_attacks, get_king_attacks, get_knight_attacks, get_pawn_attacks,
+        get_rook_attacks,
+    },
+    types::{
+        bitboard::Bitboard,
+        castling::Castling,
+        color::Color,
+        hash_keys::HashKeys,
+        piece::{Piece, PieceType},
+        square::Square,
+    },
 };
 
 #[derive(Copy, Clone, Default)]
@@ -39,6 +45,10 @@ impl Board {
 
     pub fn get_color(&self, color: Color) -> Bitboard {
         self.color_bitboards[color]
+    }
+
+    pub fn king_square(&self, color: Color) -> Square {
+        self.colored_pieces(color, PieceType::King).lsb()
     }
 
     pub fn pieces(&self, pt: PieceType) -> Bitboard {
@@ -78,6 +88,7 @@ impl Board {
 
     pub fn remove_piece(&mut self, square: Square) -> Piece {
         let piece = self.piece_squares[square];
+        debug_assert!(piece != Piece::None);
         self.piece_squares[square] = Piece::None;
         self.color_bitboards[piece.color()].clear(square);
         self.piece_bitboards[piece.piece_type()].clear(square);
@@ -105,7 +116,11 @@ impl Board {
         // Here on, there are exactly 2 non-king minors
 
         // Here, each side has one minor
-        if (self.colored_pieces(stm, PieceType::Bishop) | self.colored_pieces(stm, PieceType::Knight)).popcount() == 1 {
+        if (self.colored_pieces(stm, PieceType::Bishop)
+            | self.colored_pieces(stm, PieceType::Knight))
+        .popcount()
+            == 1
+        {
             //If a king is in a corner, don't auto draw.
             return (Bitboard::CORNERS & self.pieces(PieceType::King)).is_empty();
         }
@@ -148,6 +163,20 @@ impl Board {
         self.board_state
             .hash_keys
             .toggle_castling(self.board_state.castling);
+    }
+
+    pub fn is_square_attacked(&self, square: Square, by: Color) -> bool {
+        let occ = self.occupancies();
+        let bishops_queens = self.pieces(PieceType::Bishop) | self.pieces(PieceType::Queen);
+        let rooks_queens = self.pieces(PieceType::Rook) | self.pieces(PieceType::Queen);
+        let their = self.color_bitboards[by];
+
+        // Don't worry about king attacks ... the king can never attack the king
+        (get_pawn_attacks(square, !by) & self.pieces(PieceType::Pawn) & their).not_empty()
+            || (get_knight_attacks(square) & self.pieces(PieceType::Knight) & their).not_empty()
+            || (get_king_attacks(square) & self.pieces(PieceType::King) & their).not_empty()
+            || (get_bishop_attacks(square, occ) & bishops_queens & their).not_empty()
+            || (get_rook_attacks(square, occ) & rooks_queens & their).not_empty()
     }
 }
 
