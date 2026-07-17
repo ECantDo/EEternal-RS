@@ -1,5 +1,4 @@
 use std::io::{self, BufRead, Write};
-use rand::Rng;
 
 use crate::board::Board;
 use crate::types::{piece::PieceType, square::Square};

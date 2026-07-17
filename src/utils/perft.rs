@@ -1,4 +1,4 @@
-use crate::{board::Board, types::move_list::MoveList};
+use crate::{board::Board};
 
 use std::time::Instant;
 
