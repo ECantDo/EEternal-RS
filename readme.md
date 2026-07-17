@@ -2,8 +2,9 @@
 
 ---
 
-A soon-to-be UCI-compatible chess engine, rewritten from my [C++
-implementation](https://github.com/ECantDo/EEternal-Chess).
+A _mostly_ UCI-compatible chess engine, rewritten from my [C++
+implementation](https://github.com/ECantDo/EEternal-Chess); it does have some UCI-features, but very limited,
+only exists so that it can run a random number generator to pick a legal move.
 
 The C++ implementation is roughly around 2900 ELO on a single thread, based
 on a private Swiss tournament, provided by Qiles Corey, from the 
@@ -15,8 +16,9 @@ the engine back to where I left the C++ engine, then get to 3000+ ELO.
 
 ### Features
 
-- Can print `Hello World`.
-- Can compile
+- Can no longer print "Hello, world!" :(
+- Can tell you its name and author
+- Can make random, legal, moves
 
 ---
 
