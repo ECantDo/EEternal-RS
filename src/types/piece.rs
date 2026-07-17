@@ -151,7 +151,7 @@ impl PieceType {
             Self::Knight => 300,
             Self::Bishop => 400,
             Self::Rook => 600,
-            Self::Queen => 1000,
+            Self::Queen => 1100,
             Self::King => 0,
             Self::None => 0,
         }

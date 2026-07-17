@@ -4,6 +4,8 @@ pub mod types;
 
 pub mod attacking;
 
+pub mod utils;
+
 use crate::types::{bitboard::Bitboard, square::Square};
 
 pub fn initialize() {

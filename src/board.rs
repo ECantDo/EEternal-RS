@@ -1,5 +1,6 @@
 mod generate_moves;
-mod parse;
+pub mod parse;
+mod make_move;
 
 use crate::types::{
     bitboard::Bitboard,
