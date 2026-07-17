@@ -2,11 +2,10 @@ pub mod board;
 
 pub mod types;
 
-pub mod magic_utils;
+pub mod attacking;
 
 use crate::types::{bitboard::Bitboard, square::Square};
-use magic_utils::{bishop_attacks, rook_attacks};
-
+use attacking::magic_utils::{bishop_attacks, rook_attacks};
 
 pub fn initialize() {
     println!("Initializing chess engine tables...");
@@ -15,4 +14,3 @@ pub fn initialize() {
     println!("Tables initialized");
     // Wowww... amazing ... there is so much here... ;-;
 }
-
