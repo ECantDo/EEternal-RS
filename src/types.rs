@@ -7,6 +7,7 @@ pub mod moves;
 pub mod piece;
 pub mod square;
 pub mod zobrist;
+pub mod score;
 
 // Likely needs to be changed, just some value for now
 pub const MAX_PLY: usize = 256;
