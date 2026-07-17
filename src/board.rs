@@ -1,7 +1,7 @@
+mod evaluate;
 mod generate_moves;
 mod make_move;
 pub mod parse;
-mod evaluate;
 
 use crate::{
     attacking::{
@@ -25,7 +25,7 @@ struct BoardState {
     en_passant: Square,
     half_move_clock: u8, // For the 50 move rule
     hash_keys: HashKeys,
-    material: i32
+    material: i32,
 }
 
 #[derive(Clone)]
@@ -52,7 +52,7 @@ impl Board {
     pub fn king_square(&self, color: Color) -> Square {
         self.colored_pieces(color, PieceType::King).lsb()
     }
-    
+
     pub fn in_check(&self) -> bool {
         let stm = self.side_to_move();
         self.is_square_attacked(self.king_square(stm), !stm)
@@ -203,5 +203,22 @@ impl Default for Board {
             color_bitboards: [Bitboard::default(); Color::NUM],
             piece_bitboards: [Bitboard::default(); PieceType::NUM],
         }
+    }
+}
+
+impl std::fmt::Display for Board {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        writeln!(f, "+---+---+---+---+---+---+---+---+")?;
+        for rank in (0..8).rev() {
+            write!(f, "|")?;
+            for file in 0..8 {
+                let square = Square::get_board_square(rank, file);
+                let symbol: char = self.get_piece_on_square(square).try_into().unwrap_or(' ');
+                write!(f, " {symbol} |")?;
+            }
+            writeln!(f, " {}", rank + 1)?;
+            writeln!(f, "+---+---+---+---+---+---+---+---+")?;
+        }
+        writeln!(f, "  a   b   c   d   e   f   g   h")
     }
 }

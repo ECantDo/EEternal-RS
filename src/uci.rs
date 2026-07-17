@@ -29,6 +29,7 @@ pub fn run_uci() {
             "position" => handle_position(&mut board, rest),
             "go" => handle_go(&mut board, rest),
             "quit" => break,
+            "d" => println!("{board}"),
             _ => {} // ignore anything we don't handle yet (setoption, debug, etc.)
         }
 
@@ -64,16 +65,17 @@ fn handle_position(board: &mut Board, rest: &str) {
 fn handle_go(board: &mut Board, rest: &str) {
     let parts: Vec<&str> = rest.split_whitespace().collect();
 
-    if parts.len() == 0 {
-        let shared_data = SharedData::new();
-        let mut search_data = SearchData::new(Arc::from(shared_data));
-
-        let mv = start_search(&mut search_data, 5);
-        println!("bestmove {}", mv.to_uci(board));
-    } else if parts[0] == "perft" && parts.len() >= 2 {
+    if parts.len() >= 2 && parts[0] == "perft" {
         let start = std::time::Instant::now();
         let nodes = board.perft(parts[1].parse().unwrap_or(1));
         println!("Nodes: {} \t | {} ms", nodes, start.elapsed().as_millis());
+    } else {
+        let shared_data = SharedData::new();
+        let mut search_data = SearchData::new(Arc::from(shared_data));
+        search_data.set_board(board);
+
+        let mv = start_search(&mut search_data, 5);
+        println!("bestmove {}", mv.to_uci(board));
     }
 }
 

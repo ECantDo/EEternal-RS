@@ -51,6 +51,10 @@ impl SearchData {
         }
     }
 
+    pub fn set_board(&mut self, board: &Board){
+        self.board = board.clone();
+    }
+
     pub fn nodes(&self) -> u64 {
         self.shared_data.nodes.count()
     }
