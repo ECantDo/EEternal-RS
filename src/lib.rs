@@ -1,6 +1,8 @@
+pub mod board;
+
 pub mod types;
 
-pub mod board;
+pub mod magic_utils;
 
 pub fn initialize() {
     println!("Initializing chess engine tables...");
