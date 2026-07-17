@@ -98,7 +98,7 @@ impl Square {
     }
 
     pub const fn to_bitboard(self) -> Bitboard {
-        Bitboard(1 << (self as u8))
+        Bitboard((1u128 << (self as u8)) as u64)
     }
 }
 
