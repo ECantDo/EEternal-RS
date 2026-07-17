@@ -1,7 +1,9 @@
-use std::io::{self, BufRead, Write};
-
 use crate::board::Board;
+use crate::search::search_types::{SearchData, SharedData};
+use crate::search::start_search;
 use crate::types::{piece::PieceType, square::Square};
+use std::io::{self, BufRead, Write};
+use std::sync::Arc;
 
 pub fn run_uci() {
     let stdin = io::stdin();
@@ -63,15 +65,10 @@ fn handle_go(board: &mut Board, rest: &str) {
     let parts: Vec<&str> = rest.split_whitespace().collect();
 
     if parts.len() == 0 {
-        let legal = board.generate_all_legal_moves();
+        let shared_data = SharedData::new();
+        let mut search_data = SearchData::new(Arc::from(shared_data));
 
-        if legal.is_empty() {
-            println!("bestmove 0000"); // shouldn't normally happen — GUI ends the game first
-            return;
-        }
-
-        let idx = rand::random_range(0..legal.len());
-        let mv = legal.get(idx);
+        let mv = start_search(&mut search_data, 5);
         println!("bestmove {}", mv.to_uci(board));
     } else if parts[0] == "perft" && parts.len() >= 2 {
         let start = std::time::Instant::now();

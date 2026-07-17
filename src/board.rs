@@ -52,6 +52,11 @@ impl Board {
     pub fn king_square(&self, color: Color) -> Square {
         self.colored_pieces(color, PieceType::King).lsb()
     }
+    
+    pub fn in_check(&self) -> bool {
+        let stm = self.side_to_move();
+        self.is_square_attacked(self.king_square(stm), !stm)
+    }
 
     pub fn pieces(&self, pt: PieceType) -> Bitboard {
         self.piece_bitboards[pt]

@@ -8,6 +8,8 @@ pub mod utils;
 
 pub mod uci;
 
+pub mod search;
+
 pub fn initialize() {
     attacking::initialize_lookups();
     uci::run_uci();
