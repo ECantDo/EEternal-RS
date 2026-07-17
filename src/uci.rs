@@ -25,7 +25,7 @@ pub fn run_uci() {
             "isready" => println!("readyok"),
             "ucinewgame" => board = Board::startpos(),
             "position" => handle_position(&mut board, rest),
-            "go" => handle_go(&mut board),
+            "go" => handle_go(&mut board, rest),
             "quit" => break,
             _ => {} // ignore anything we don't handle yet (setoption, debug, etc.)
         }
@@ -59,17 +59,25 @@ fn handle_position(board: &mut Board, rest: &str) {
     }
 }
 
-fn handle_go(board: &mut Board) {
-    let legal = board.generate_all_legal_moves();
+fn handle_go(board: &mut Board, rest: &str) {
+    let parts: Vec<&str> = rest.split_whitespace().collect();
 
-    if legal.is_empty() {
-        println!("bestmove 0000"); // shouldn't normally happen — GUI ends the game first
-        return;
+    if parts.len() == 0 {
+        let legal = board.generate_all_legal_moves();
+
+        if legal.is_empty() {
+            println!("bestmove 0000"); // shouldn't normally happen — GUI ends the game first
+            return;
+        }
+
+        let idx = rand::random_range(0..legal.len());
+        let mv = legal.get(idx);
+        println!("bestmove {}", mv.to_uci(board));
+    } else if parts[0] == "perft" && parts.len() >= 2 {
+        let start = std::time::Instant::now();
+        let nodes = board.perft(parts[1].parse().unwrap_or(1));
+        println!("Nodes: {} \t | {} ms", nodes, start.elapsed().as_millis());
     }
-
-    let idx = rand::random_range(0..legal.len());
-    let mv = legal.get(idx);
-    println!("bestmove {}", mv.to_uci(board));
 }
 
 fn parse_uci_move(board: &mut Board, uci: &str) -> Option<crate::types::moves::Move> {
