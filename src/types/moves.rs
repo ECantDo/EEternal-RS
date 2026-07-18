@@ -48,7 +48,7 @@ impl Move {
         self.0 == 0
     }
 
-    pub fn is_capture(self) -> bool {
+    pub const fn is_capture(self) -> bool {
         (self.0 >> 12) & 0b0100 != 0 // bit 2 of the flag nibble
     }
 
@@ -63,7 +63,7 @@ impl Move {
         )
     }
 
-    pub fn is_en_passant(self) -> bool {
+    pub const fn is_en_passant(self) -> bool {
         matches!(self.flag(), MoveFlag::EnPassant)
     }
 
