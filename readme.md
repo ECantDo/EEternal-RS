@@ -73,5 +73,5 @@ and played games against those bots.
 
 | Version Number | Approx ELO  | Version Description                             | VS                                  | VS Elo      |
 |----------------|-------------|-------------------------------------------------|-------------------------------------|-------------|
-| 0.0.1          | 1           | Makes random moves very quickly                 | N/A                                 | N/A         |
 | 0.0.2          | 1098 +/- 12 | Fixed search depth of 5. Basic search algorithm | Turochamp (Faithful) (by: P Rivero) | 1026 +/- 81 |  
+| 0.0.1          | 1           | Makes random moves very quickly                 | N/A                                 | N/A         |
