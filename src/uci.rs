@@ -1,6 +1,8 @@
 use crate::board::Board;
 use crate::search::search_types::{SearchData, SharedData};
 use crate::search::start_search;
+use crate::time_manager::{Limits, TimeManager};
+use crate::types::color::Color;
 use crate::types::{piece::PieceType, square::Square};
 use std::io::{self, BufRead, Write};
 use std::sync::Arc;
@@ -65,19 +67,74 @@ fn handle_position(board: &mut Board, rest: &str) {
 fn handle_go(board: &mut Board, rest: &str) {
     let parts: Vec<&str> = rest.split_whitespace().collect();
 
-    if parts.len() >= 2 && parts[0] == "perft" {
+    if parts.len() >= 1 && parts[0] == "perft" {
         let start = std::time::Instant::now();
-        let nodes = board.perft(parts[1].parse().unwrap_or(1));
+        let nodes = board.perft(parts.get(1).unwrap_or(&"5").parse().unwrap());
         println!("Nodes: {} \t | {} ms", nodes, start.elapsed().as_millis());
-    } else {
-        let shared_data = SharedData::new();
-        let mut search_data = SearchData::new(Arc::from(shared_data));
-        search_data.set_board(board);
+        return;
+    }
 
-        let mv = start_search(&mut search_data, 5);
-        println!("bestmove {}", mv.to_uci(board));
+    let limits = parse_limits(board.side_to_move(), &*parts);
+
+    if matches!(limits, Limits::Infinite) {
+        return; // Can do inf, no way to stop
+    }
+
+    let shared_data = SharedData::new();
+    let mut search_data = SearchData::new(Arc::from(shared_data));
+    search_data.set_board(board);
+    // TODO : Figure out overhead (guessing 15ms)
+    search_data.time_manager = TimeManager::new(limits, 5);
+
+
+    let mv = start_search(&mut search_data);
+    println!("bestmove {}", mv.to_uci(board));
+}
+
+fn parse_limits(color: Color, tokens: &[&str]) -> Limits {
+    if let ["infinite"] = tokens {
+        return Limits::Infinite;
+    }
+
+    let mut main = None;
+    let mut inc = None;
+    let mut moves = None;
+
+    for chunk in tokens.chunks(2) {
+        if let [name, value] = *chunk {
+            let Ok(value) = value.parse::<u64>() else {
+                continue;
+            };
+
+            match name {
+                "depth" if value > 0 => return Limits::Depth(value as i32),
+                "movetime" if value > 0 => return Limits::Time(value),
+                "nodes" if value > 0 => return Limits::Nodes(value),
+                // "mate" if value > 0 => return Limits::Mate(value), // Can't mate search ...
+                "wtime" if Color::White == color => main = Some(value),
+                "btime" if Color::Black == color => main = Some(value),
+                "winc" if Color::White == color => inc = Some(value),
+                "binc" if Color::Black == color => inc = Some(value),
+                "movestogo" => moves = Some(value),
+
+                _ => continue,
+            }
+        }
+    }
+
+    if main.is_none() && inc.is_none() {
+        return Limits::Infinite;
+    }
+
+    let main = main.unwrap_or_default();
+    let inc = inc.unwrap_or_default();
+
+    match moves {
+        Some(moves) => Limits::Cyclic(main, inc, moves),
+        None => Limits::Fischer(main, inc),
     }
 }
+
 
 fn parse_uci_move(board: &mut Board, uci: &str) -> Option<crate::types::moves::Move> {
     if uci.len() < 4 {

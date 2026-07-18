@@ -10,6 +10,8 @@ pub mod uci;
 
 pub mod search;
 
+pub mod time_manager;
+
 pub fn initialize() {
     attacking::initialize_lookups();
     uci::run_uci();

@@ -1,5 +1,9 @@
-use crate::types::score::Score;
-use crate::{board::Board, types::moves::Move};
+use crate::time_manager::Limits;
+use crate::{
+    board::Board,
+    time_manager::TimeManager,
+    types::{moves::Move, score::Score},
+};
 use std::{
     sync::{
         atomic::{AtomicU64, Ordering},
@@ -30,8 +34,9 @@ pub struct SharedData {
 pub struct SearchData {
     pub board: Board,
     pub shared_data: Arc<SharedData>,
-    pub start_time: Instant,
+    pub time_manager: TimeManager,
     pub root_move: RootMove,
+    pub completed_depth: usize,
 }
 
 pub struct Counter {
@@ -69,8 +74,9 @@ impl SearchData {
         Self {
             board: Board::startpos(),
             shared_data: shared,
-            start_time: Instant::now(),
+            time_manager: TimeManager::new(Limits::Infinite, 0),
             root_move: RootMove::default(),
+            completed_depth: 0,
         }
     }
 
@@ -83,27 +89,27 @@ impl SearchData {
     }
 
     pub fn reset_clock(&mut self) {
-        self.start_time = Instant::now();
+        self.time_manager.reset_start();
     }
 
     pub fn elapsed_ms(&self) -> u128 {
-        self.start_time.elapsed().as_millis()
+        self.time_manager.elapsed().as_millis()
     }
 
     pub fn elapsed_us(&self) -> u128 {
-        self.start_time.elapsed().as_micros()
+        self.time_manager.elapsed().as_micros()
     }
 
     pub fn elapsed_ns(&self) -> u128 {
-        self.start_time.elapsed().as_nanos()
+        self.time_manager.elapsed().as_nanos()
     }
 
-    pub fn to_uci_info(&self, depth: i32) -> String {
+    pub fn to_uci_info(&self) -> String {
         let time_ms = self.elapsed_ms();
         let nodes = self.nodes();
         let nps: u128 = (nodes as u128) * 1_000_000 / self.elapsed_us();
 
-        let mut uci_out = String::from(format!("info depth {} ", depth));
+        let mut uci_out = String::from(format!("info depth {} ", self.completed_depth));
 
         if self.root_move.score.abs() >= Score::MATE_IN_MAX {
             uci_out += format!(

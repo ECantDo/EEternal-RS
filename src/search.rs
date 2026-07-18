@@ -1,4 +1,5 @@
 use crate::search::search_types::SearchData;
+use crate::time_manager::Limits;
 use crate::types::moves::Move;
 use crate::types::score::Score;
 use crate::types::MAX_PLY;
@@ -28,41 +29,65 @@ impl NodeType for NonPV {
     const ROOT: bool = false;
 }
 
-pub fn start_search(search_data: &mut SearchData, depth: i32) -> Move {
+pub fn start_search(search_data: &mut SearchData) -> Move {
     let mut moves = search_data.board.generate_all_legal_moves();
     debug_assert!(
         !moves.is_empty(),
         "start_search called on a position with no legal moves"
     );
 
-    search_data.root_move.mv = moves.get(0);
-    let mut alpha = -Score::INF;
-    let beta = Score::INF;
+    let max_depth = match search_data.time_manager.limits() {
+        Limits::Depth(depth) => depth as usize,
+        _ => MAX_PLY - 1
+    };
 
-    for root_depth in 1..(depth + 1) {
+    search_data.root_move.mv = moves.get(0);
+
+    for root_depth in 1..=max_depth {
+        let mut alpha = -Score::INF;
+        let beta = Score::INF;
         let mut best_score = -Score::INF;
 
         let mut idx = 0;
         for mv in &moves {
             search_data.board.make_move(mv);
-            let score = -search::<Root>(search_data, -beta, -alpha, root_depth - 1, 1);
+            let score = -search::<Root>(search_data, -beta, -alpha, (root_depth - 1) as i32, 1);
             search_data.board.undo_move(mv);
+
+            if score.abs() >= Score::NONE {
+                println!("{}", search_data.to_uci_info());
+                return search_data.root_move.mv;
+            }
 
             if score > best_score {
                 search_data.root_move.mv = mv;
                 search_data.root_move.score = score;
                 best_score = score;
-                moves.place_first(idx);
+                moves.place_first(idx); // This is fine, I swear
             }
             if score > alpha {
                 alpha = score;
             }
+
+            // Hard Time limit
+            if search_data.time_manager.check_time(search_data) {
+                println!("{}", search_data.to_uci_info());
+                return search_data.root_move.mv; // The best move will either be the first one (still thinks is best), or a new one that is better
+            }
             idx += 1
         }
-        println!("{}", search_data.to_uci_info(depth));
+        search_data.completed_depth = root_depth;
+        println!("{}", search_data.to_uci_info());
+
+        if search_data
+            .time_manager
+            .soft_limit_exceeded(&*search_data.shared_data)
+        {
+            break;
+        }
     }
 
-    search_data.root_move.mv
+    return search_data.root_move.mv;
 }
 
 fn search<Node: NodeType>(
@@ -76,6 +101,10 @@ fn search<Node: NodeType>(
     debug_assert!(-Score::INF <= alpha && alpha < beta && beta <= Score::INF);
 
     search_data.shared_data.nodes.increment();
+
+    if search_data.time_manager.check_time(search_data) {
+        return Score::NONE;
+    }
 
     let in_check = search_data.board.in_check();
 
@@ -104,6 +133,10 @@ fn search<Node: NodeType>(
         search_data.board.make_move(mv);
         let score = -search::<NonPV>(search_data, -beta, -alpha, depth - 1, ply + 1);
         search_data.board.undo_move(mv);
+
+        if score.abs() >= Score::NONE {
+            return score;
+        }
 
         debug_assert!(score.abs() <= Score::MATE);
 
