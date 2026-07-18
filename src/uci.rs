@@ -84,7 +84,7 @@ fn handle_go(board: &mut Board, rest: &str) {
     let mut search_data = SearchData::new(Arc::from(shared_data));
     search_data.set_board(board);
     // TODO : Figure out overhead (guessing 15ms)
-    search_data.time_manager = TimeManager::new(limits, 5);
+    search_data.time_manager = TimeManager::new(limits, board.full_move_number(), 5);
 
 
     let mv = start_search(&mut search_data);

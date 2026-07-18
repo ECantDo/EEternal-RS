@@ -1,5 +1,5 @@
-use std::time::{Duration, Instant};
 use crate::search::search_types::{SearchData, SharedData};
+use std::time::{Duration, Instant};
 
 #[derive(Clone, Copy, Debug)]
 pub enum Limits {
@@ -23,7 +23,7 @@ pub struct TimeManager {
 }
 
 impl TimeManager {
-    pub fn new(limits: Limits, move_overhead: u64) -> Self {
+    pub fn new(limits: Limits, fullmove_number: usize, move_overhead: u64) -> Self {
         let soft;
         let hard;
 
@@ -37,8 +37,8 @@ impl TimeManager {
             Limits::Fischer(main, inc) => {
                 let inc_time: f64 = 0.70 * inc as f64;
 
-                let soft_scale: f64 = 0.65;
-                let hard_scale: f64 = 0.8; // 80% of time
+                let soft_scale = 0.0594 - 0.0492 * (-0.0386 * fullmove_number as f64).exp();
+                let hard_scale: f64 = 0.30;
 
                 let soft_bound =
                     (soft_scale * main.saturating_sub(move_overhead) as f64 + inc_time) as u64;
@@ -71,7 +71,7 @@ impl TimeManager {
     }
 
     pub fn soft_limit_exceeded(&self, shared_data: &SharedData) -> bool {
-        match self.limits{
+        match self.limits {
             Limits::Infinite | Limits::Depth(_) | Limits::Mate(_) => false,
             Limits::Nodes(max) => shared_data.nodes.count() >= max,
             Limits::Time(max) => self.start_time.elapsed() >= Duration::from_millis(max),
@@ -91,15 +91,15 @@ impl TimeManager {
             _ => search_data.nodes() & 2047 == 2047 && self.start_time.elapsed() >= self.hard_bound,
         }
     }
-    
+
     pub fn reset_start(&mut self) {
         self.start_time = Instant::now();
     }
-    
+
     pub fn elapsed(&self) -> Duration {
         self.start_time.elapsed()
     }
-    
+
     pub fn limits(&self) -> Limits {
         self.limits
     }

@@ -74,7 +74,7 @@ impl SearchData {
         Self {
             board: Board::startpos(),
             shared_data: shared,
-            time_manager: TimeManager::new(Limits::Infinite, 0),
+            time_manager: TimeManager::new(Limits::Infinite, 0, 0),
             root_move: RootMove::default(),
             completed_depth: 0,
         }
