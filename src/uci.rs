@@ -20,7 +20,7 @@ pub fn run_uci() {
 
         match cmd {
             "uci" => {
-                println!("id name EeternalRS");
+                println!("id name EeternalRS_V{}", env!("CARGO_PKG_VERSION"));
                 println!("id author ECanDo");
                 println!("uciok");
             }
