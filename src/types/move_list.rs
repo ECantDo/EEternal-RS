@@ -50,6 +50,24 @@ impl MoveList {
         self.moves[idx] = self.moves[self.len];
         mv
     }
+
+    pub fn place_first(&mut self, idx: usize) {
+        debug_assert!(idx < self.len);
+        if idx == 0 {
+            return;
+        }
+
+        let mv = self.moves[idx];
+        self.moves.copy_within(0..idx, 1);
+        self.moves[0] = mv;
+
+    }
+
+    pub fn swap(&mut self, idx1: usize, idx2: usize) {
+        debug_assert!(idx1 < self.len && idx2 < self.len);
+
+        self.moves.swap(idx1, idx2);
+    }
 }
 
 impl std::ops::Index<usize> for MoveList {

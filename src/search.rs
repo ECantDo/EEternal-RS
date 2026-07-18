@@ -1,7 +1,7 @@
-use crate::search::search_types::{RootMove, SearchData};
+use crate::search::search_types::SearchData;
+use crate::types::moves::Move;
 use crate::types::score::Score;
 use crate::types::MAX_PLY;
-use crate::types::moves::Move;
 
 pub mod search_types;
 
@@ -29,33 +29,40 @@ impl NodeType for NonPV {
 }
 
 pub fn start_search(search_data: &mut SearchData, depth: i32) -> Move {
+    let mut moves = search_data.board.generate_all_legal_moves();
+    debug_assert!(
+        !moves.is_empty(),
+        "start_search called on a position with no legal moves"
+    );
 
-    let moves = search_data.board.generate_all_legal_moves();
-    debug_assert!(!moves.is_empty(), "start_search called on a position with no legal moves");
-
-    let mut best_move = moves.get(0);
-    let mut best_score = -Score::INF;
+    search_data.root_move.mv = moves.get(0);
     let mut alpha = -Score::INF;
     let beta = Score::INF;
 
-    for mv in &moves {
-        search_data.board.make_move(mv);
-        let score = -search::<Root>(search_data, -beta, -alpha, depth - 1, 1);
-        search_data.board.undo_move(mv);
+    for root_depth in 1..(depth + 1) {
+        let mut best_score = -Score::INF;
 
-        if score > best_score {
-            search_data.root_move.mv = mv;
-            search_data.root_move.score = score;
-            best_score = score;
-            best_move = mv;
+        let mut idx = 0;
+        for mv in &moves {
+            search_data.board.make_move(mv);
+            let score = -search::<Root>(search_data, -beta, -alpha, root_depth - 1, 1);
+            search_data.board.undo_move(mv);
+
+            if score > best_score {
+                search_data.root_move.mv = mv;
+                search_data.root_move.score = score;
+                best_score = score;
+                moves.place_first(idx);
+            }
+            if score > alpha {
+                alpha = score;
+            }
+            idx += 1
         }
-        if score > alpha {
-            alpha = score;
-        }
+        println!("{}", search_data.to_uci_info(depth));
     }
-    println!("{}", search_data.to_uci_info(depth));
 
-    best_move
+    search_data.root_move.mv
 }
 
 fn search<Node: NodeType>(
