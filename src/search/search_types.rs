@@ -1,9 +1,27 @@
-use crate::board::Board;
-use std::sync::{
-    atomic::{AtomicU64, Ordering},
-    Arc,
+use crate::types::score::Score;
+use crate::{board::Board, types::moves::Move};
+use std::{
+    sync::{
+        atomic::{AtomicU64, Ordering},
+        Arc,
+    },
+    time::Instant,
 };
-use std::time::Instant;
+
+#[derive(Clone)]
+pub struct RootMove {
+    pub mv: Move,
+    pub score: i32,
+}
+
+impl Default for RootMove {
+    fn default() -> Self {
+        Self {
+            mv: Move::NONE,
+            score: Score::NONE,
+        }
+    }
+}
 
 pub struct SharedData {
     // tt
@@ -13,6 +31,7 @@ pub struct SearchData {
     pub board: Board,
     pub shared_data: Arc<SharedData>,
     pub start_time: Instant,
+    pub root_move: RootMove,
 }
 
 pub struct Counter {
@@ -51,6 +70,7 @@ impl SearchData {
             board: Board::startpos(),
             shared_data: shared,
             start_time: Instant::now(),
+            root_move: RootMove::default(),
         }
     }
 
@@ -84,6 +104,16 @@ impl SearchData {
         let nps: u128 = (nodes as u128) * 1_000_000 / self.elapsed_us();
 
         let mut uci_out = String::from(format!("info depth {} ", depth));
+
+        if self.root_move.score.abs() >= Score::MATE_IN_MAX {
+            uci_out += format!(
+                "score mate {} ",
+                Score::score_to_mate_moves(self.root_move.score)
+            )
+            .as_str();
+        } else {
+            uci_out += format!("score cp {} ", self.root_move.score).as_str();
+        }
 
         uci_out += format!("nodes {} ", nodes).as_str();
 

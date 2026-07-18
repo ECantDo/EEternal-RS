@@ -13,4 +13,10 @@ impl Score {
     pub const fn mated_in(ply: i32) -> i32 {
         ply - Self::MATE
     }
+
+    pub fn score_to_mate_moves(score: i32) -> i32 {
+        let dst: i32 = Self::MATE - score.abs();
+        let moves: i32 = (dst + 1) / 2;
+        if score > 0 { moves } else { -moves }
+    }
 }

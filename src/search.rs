@@ -1,4 +1,4 @@
-use crate::search::search_types::SearchData;
+use crate::search::search_types::{RootMove, SearchData};
 use crate::types::score::Score;
 use crate::types::MAX_PLY;
 use crate::types::moves::Move;
@@ -44,6 +44,8 @@ pub fn start_search(search_data: &mut SearchData, depth: i32) -> Move {
         search_data.board.undo_move(mv);
 
         if score > best_score {
+            search_data.root_move.mv = mv;
+            search_data.root_move.score = score;
             best_score = score;
             best_move = mv;
         }
@@ -51,6 +53,7 @@ pub fn start_search(search_data: &mut SearchData, depth: i32) -> Move {
             alpha = score;
         }
     }
+    println!("{}", search_data.to_uci_info(depth));
 
     best_move
 }
