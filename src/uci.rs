@@ -123,8 +123,8 @@ fn handle_go(mut board: Board, rest: &str, shared_data: Arc<SharedData>) {
 
     let mut search_data = SearchData::new(Arc::from(shared_data));
     search_data.set_board(&board);
-    // TODO : Figure out overhead (guessing 15ms)
-    search_data.time_manager = TimeManager::new(limits, board.full_move_number(), 15);
+    // TODO : Figure out overhead (guessing 5ms)
+    search_data.time_manager = TimeManager::new(limits, board.full_move_number(), 5);
 
     let mv = start_search(&mut search_data);
     println!("bestmove {}", mv.to_uci(&board));
