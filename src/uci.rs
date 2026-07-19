@@ -100,9 +100,17 @@ fn handle_position(board: &mut Board, rest: &str) {
 fn handle_go(mut board: Board, rest: &str, shared_data: Arc<SharedData>) {
     let parts: Vec<&str> = rest.split_whitespace().collect();
 
-    if parts.len() >= 1 && parts[0] == "perft" {
+    if parts.len() >= 1 && parts[0].contains("perft") {
         let start = std::time::Instant::now();
-        let nodes = board.perft(parts.get(1).unwrap_or(&"4").parse().unwrap());
+        let nodes: u64;
+        let perft_depth: usize = parts.get(1).unwrap_or(&"4").parse().unwrap_or(4);
+        if parts[0] == "perft" {
+            nodes = board.perft(perft_depth);
+        } else if parts[0] == "bulkperft" {
+            nodes = board.perft_bulk(perft_depth);
+        } else {
+            nodes = 0;
+        }
         println!("Nodes: {} \t | {} ms", nodes, start.elapsed().as_millis());
         return;
     }
