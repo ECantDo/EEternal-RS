@@ -28,7 +28,7 @@ const PERFT_TESTS: &[PerftInputs] = &[
     },
     PerftInputs {
         fen: "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1",
-        expected_results: &[1, 6, 264, 9467, 422333, 15833292, 706045033],
+        expected_results: &[1, 6, 264, 9467, 422333, 15833292, 706045033, 27209691363],
         depth: 5,
     },
     PerftInputs {
