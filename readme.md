@@ -19,7 +19,7 @@ the engine back to where I left the C++ engine, then get to 3000+ ELO.
 - Can no longer print "Hello, world!" :(
 - Can tell you its name and author
 - Can make moves
-- No engine logs (Not really a good thing, but you might like it like that)
+- Engine Logs
 
 ### Evaluation
 
@@ -28,10 +28,8 @@ and uses this as the sole evaluation function.
 
 ### Search
 
-This engine always searches to a fixed depth of 5 ply. This is because I just
-wanted to get something working, before making it work good. I also think
-that it's funny. It's search speed is good enough, for depth 5 (at least on my
-computer) to almost never take more than a second to evaluate the position.
+This engine is capable of playing full games, with any time control. It now has full
+integration to play full games via UCI.
 
 The search uses NegaMax with alpha beta pruning.
 
@@ -39,16 +37,18 @@ The search uses NegaMax with alpha beta pruning.
 
 The following UCI commands are implemented:
 
-| Command    | Description                                    |
-|------------|------------------------------------------------|
-| uci        | Tell the engine to use the UCI protocol        |
-| isready    | Confirms the engine is ready                   |
-| ucinewgame | Starts a new game                              |
-| position   | Sets up the position                           |
-| go         | Just `go`, no depth, time, or nodes            |
-| go perft   | Runs (non-bulk) perft for the current position |
-| quit       | Stops the engine                               |
-| d          | Display the current board state                |
+| Command      | Description                                          |
+|--------------|------------------------------------------------------|
+| uci          | Tell the engine to use the UCI protocol              |
+| isready      | Confirms the engine is ready                         |
+| ucinewgame   | Starts a new game                                    |
+| position     | Sets up the position                                 |
+| go           | Supports `depth`, `movetime`, `wtime/btime`, `nodes` |
+| go perft     | Runs (non-bulk) perft for the current position       |
+| go bulkperft | Runs bulk perft for the current position             |
+| quit         | Stops the engine                                     |
+| Stop         | Stops the current search                             |
+| d            | Display the current board state                      |
 
 ---
 
@@ -71,7 +71,8 @@ of the Swiss and Knockout games played.
 I have downloaded some bots in the surrounding area where my engine is roughly located,
 and played games against those bots.
 
-| Version Number | Approx ELO  | Version Description                             | VS                                  | VS Elo      |
-|----------------|-------------|-------------------------------------------------|-------------------------------------|-------------|
-| 0.0.2          | 1098 +/- 12 | Fixed search depth of 5. Basic search algorithm | Turochamp (Faithful) (by: P Rivero) | 1026 +/- 81 |  
-| 0.0.1          | 1           | Makes random moves very quickly                 | N/A                                 | N/A         |
+| Version Number | Approx ELO  | Version Description                                                     | VS                                  | VS Elo      |
+|----------------|-------------|-------------------------------------------------------------------------|-------------------------------------|-------------|
+| 0.0.3          | 1371 +/- 16 | Iterative deepening with basic time management                          | applemethod-orz (by: RedBlackTree)  | 1085 +/- 84 |
+| 0.0.2          | 1098 +/- 12 | Fixed search depth of 5. Negamax + Alpha/Beta; Pure material evaluation | Turochamp (Faithful) (by: P Rivero) | 1026 +/- 81 |  
+| 0.0.1          | 1           | Makes random moves very quickly                                         | N/A                                 | N/A         |
