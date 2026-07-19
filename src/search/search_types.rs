@@ -4,12 +4,10 @@ use crate::{
     time_manager::TimeManager,
     types::{moves::Move, score::Score},
 };
-use std::{
-    sync::{
-        atomic::{AtomicU64, Ordering},
-        Arc,
-    },
-    time::Instant,
+use std::sync::atomic::AtomicBool;
+use std::sync::{
+    atomic::{AtomicU64, Ordering},
+    Arc,
 };
 
 #[derive(Clone)]
@@ -30,6 +28,7 @@ impl Default for RootMove {
 pub struct SharedData {
     // tt
     pub nodes: Counter,
+    pub stop: AtomicBool,
 }
 pub struct SearchData {
     pub board: Board,
@@ -107,7 +106,7 @@ impl SearchData {
     pub fn to_uci_info(&self) -> String {
         let time_ms = self.elapsed_ms();
         let nodes = self.nodes();
-        let nps: u128 = (nodes as u128) * 1_000_000 / self.elapsed_us();
+        let nps: u128 = (nodes as u128) * 1_000_000 / self.elapsed_us().max(1);
 
         let mut uci_out = String::from(format!("info depth {} ", self.completed_depth));
 
@@ -135,6 +134,7 @@ impl SharedData {
     pub fn new() -> Self {
         Self {
             nodes: Counter::default(),
+            stop: AtomicBool::new(false),
         }
     }
 }

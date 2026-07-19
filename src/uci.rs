@@ -5,14 +5,23 @@ use crate::time_manager::{Limits, TimeManager};
 use crate::types::color::Color;
 use crate::types::{piece::PieceType, square::Square};
 use std::io::{self, BufRead, Write};
+use std::sync::atomic::Ordering;
 use std::sync::Arc;
 
 pub fn run_uci() {
     let stdin = io::stdin();
     let mut board = Board::startpos();
+    let mut search_thread: Option<std::thread::JoinHandle<()>> = None;
+    let shared_data = Arc::new(SharedData::new());
 
     for line in stdin.lock().lines() {
-        let line = line.unwrap();
+        let line = match line {
+            Ok(l) => l,
+            Err(e) => {
+                eprintln!("Error! {e}");
+                break;
+            }
+        };
         let line = line.trim();
         if line.is_empty() {
             continue;
@@ -29,13 +38,37 @@ pub fn run_uci() {
             "isready" => println!("readyok"),
             "ucinewgame" => board = Board::startpos(),
             "position" => handle_position(&mut board, rest),
-            "go" => handle_go(&mut board, rest),
-            "quit" => break,
+            "go" => {
+                if let Some(handle) = search_thread.take() {
+                    shared_data.stop.store(true, Ordering::Relaxed);
+                    let _ = handle.join(); // wait for the previous search to actually finish
+                }
+                shared_data.stop.store(false, Ordering::Relaxed);
+                shared_data.nodes.reset();
+                let board_clone = board.clone();
+                let rest = rest.to_string();
+                let shared_data = Arc::clone(&shared_data);
+                search_thread = Some(std::thread::spawn(move || {
+                    handle_go(board_clone, &rest, shared_data);
+                }));
+            }
+            "stop" => shared_data.stop.store(true, Ordering::Relaxed),
+            "quit" => {
+                shared_data.stop.store(true, Ordering::Relaxed);
+                break;
+            }
             "d" => println!("{board}"),
-            _ => {} // ignore anything we don't handle yet (setoption, debug, etc.)
+            _ => {
+                eprintln!("Unknown option {}", line)
+            } // ignore anything we don't handle yet (setoption, debug, etc.)
         }
 
         io::stdout().flush().unwrap();
+    }
+
+    if let Some(handle) = search_thread.take() {
+        shared_data.stop.store(true, Ordering::Relaxed);
+        let _ = handle.join();
     }
 }
 
@@ -64,12 +97,12 @@ fn handle_position(board: &mut Board, rest: &str) {
     }
 }
 
-fn handle_go(board: &mut Board, rest: &str) {
+fn handle_go(mut board: Board, rest: &str, shared_data: Arc<SharedData>) {
     let parts: Vec<&str> = rest.split_whitespace().collect();
 
     if parts.len() >= 1 && parts[0] == "perft" {
         let start = std::time::Instant::now();
-        let nodes = board.perft(parts.get(1).unwrap_or(&"5").parse().unwrap());
+        let nodes = board.perft(parts.get(1).unwrap_or(&"4").parse().unwrap());
         println!("Nodes: {} \t | {} ms", nodes, start.elapsed().as_millis());
         return;
     }
@@ -80,15 +113,14 @@ fn handle_go(board: &mut Board, rest: &str) {
         return; // Can do inf, no way to stop
     }
 
-    let shared_data = SharedData::new();
     let mut search_data = SearchData::new(Arc::from(shared_data));
-    search_data.set_board(board);
+    search_data.set_board(&board);
     // TODO : Figure out overhead (guessing 15ms)
-    search_data.time_manager = TimeManager::new(limits, board.full_move_number(), 5);
-
+    search_data.time_manager = TimeManager::new(limits, board.full_move_number(), 15);
 
     let mv = start_search(&mut search_data);
-    println!("bestmove {}", mv.to_uci(board));
+    println!("bestmove {}", mv.to_uci(&board));
+    io::stdout().flush().unwrap();
 }
 
 fn parse_limits(color: Color, tokens: &[&str]) -> Limits {
@@ -134,7 +166,6 @@ fn parse_limits(color: Color, tokens: &[&str]) -> Limits {
         None => Limits::Fischer(main, inc),
     }
 }
-
 
 fn parse_uci_move(board: &mut Board, uci: &str) -> Option<crate::types::moves::Move> {
     if uci.len() < 4 {

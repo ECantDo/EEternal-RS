@@ -3,6 +3,7 @@ use crate::time_manager::Limits;
 use crate::types::moves::Move;
 use crate::types::score::Score;
 use crate::types::MAX_PLY;
+use std::sync::atomic::Ordering;
 
 pub mod search_types;
 
@@ -38,7 +39,7 @@ pub fn start_search(search_data: &mut SearchData) -> Move {
 
     let max_depth = match search_data.time_manager.limits() {
         Limits::Depth(depth) => depth as usize,
-        _ => MAX_PLY - 1
+        _ => MAX_PLY - 1,
     };
 
     search_data.root_move.mv = moves.get(0);
@@ -64,13 +65,16 @@ pub fn start_search(search_data: &mut SearchData) -> Move {
                 search_data.root_move.score = score;
                 best_score = score;
                 moves.place_first(idx); // This is fine, I swear
+                // moves.swap(0, idx);
             }
             if score > alpha {
                 alpha = score;
             }
 
             // Hard Time limit
-            if search_data.time_manager.check_time(search_data) {
+            if search_data.time_manager.check_time(search_data)
+                || search_data.shared_data.stop.load(Ordering::Relaxed)
+            {
                 println!("{}", search_data.to_uci_info());
                 return search_data.root_move.mv; // The best move will either be the first one (still thinks is best), or a new one that is better
             }
@@ -82,6 +86,7 @@ pub fn start_search(search_data: &mut SearchData) -> Move {
         if search_data
             .time_manager
             .soft_limit_exceeded(&*search_data.shared_data)
+            || search_data.shared_data.stop.load(Ordering::Relaxed)
         {
             break;
         }
@@ -102,7 +107,9 @@ fn search<Node: NodeType>(
 
     search_data.shared_data.nodes.increment();
 
-    if search_data.time_manager.check_time(search_data) {
+    if search_data.time_manager.check_time(search_data)
+        || search_data.shared_data.stop.load(Ordering::Relaxed)
+    {
         return Score::NONE;
     }
 

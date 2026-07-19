@@ -12,7 +12,7 @@ pub enum Limits {
     Cyclic(u64, u64, u64),
 }
 
-const TIME_OVERHEAD_MS: u64 = 10;
+const TIME_OVERHEAD_MS: u64 = 1;
 
 #[derive(Clone)]
 pub struct TimeManager {
