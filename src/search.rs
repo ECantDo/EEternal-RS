@@ -1,13 +1,13 @@
+use crate::search::qsearch::qsearch;
 use crate::search::search_types::SearchData;
 use crate::time_manager::Limits;
 use crate::types::moves::Move;
 use crate::types::score::Score;
 use crate::types::MAX_PLY;
 use std::sync::atomic::Ordering;
-use crate::search::qsearch::qsearch;
 
-pub mod search_types;
 mod qsearch;
+pub mod search_types;
 
 pub trait NodeType {
     const PV: bool;
@@ -118,8 +118,14 @@ fn search<Node: NodeType>(
     let in_check = search_data.board.in_check();
 
     // ============ Evaluate on depth 0 ============
-    if depth <= 0 && !in_check {
-        return qsearch::<NonPV>(search_data, alpha, beta, ply);
+    if depth <= 0 {
+        let q = qsearch::<NonPV>(search_data, alpha, beta, 0);
+        if q > Score::MATE_IN_MAX {
+            return q - ply;
+        } else if q < -Score::MATE_IN_MAX {
+            return q + ply;
+        }
+        return q;
     }
 
     // ============ Generate Moves ============
@@ -131,8 +137,6 @@ fn search<Node: NodeType>(
             return Score::mated_in(ply);
         }
         return 0;
-    } else if depth <= 0 {
-        return search_data.board.evaluate();
     }
 
     // ============ Search ============

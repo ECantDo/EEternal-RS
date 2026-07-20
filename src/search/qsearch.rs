@@ -36,7 +36,7 @@ pub fn qsearch<NODE: NodeType>(
 
     let stand_pat: i32;
     if in_check {
-        stand_pat = -Score::MATE + ply as i32;
+        stand_pat = Score::mated_in(ply);
     } else {
         stand_pat = search_data.board.evaluate();
         if stand_pat >= beta {
@@ -48,7 +48,7 @@ pub fn qsearch<NODE: NodeType>(
         }
     }
 
-    if ply as usize > MAX_PLY {
+    if ply as usize >= 10 { // Should be max ply ; 10 since run-away recursion is a problem
         return stand_pat;
     }
 
