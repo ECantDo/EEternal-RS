@@ -147,8 +147,29 @@ impl Board {
         self.half_move_number >= 100
     }
 
+    pub fn draw_by_repetition(&self) -> bool {
+        let len = self.board_state_stack.len();
+        if len == 0 {
+            return false;
+        }
+        let current: u64 = self.board_state.hash_keys.zobrist();
+        let mut count: i32 = 1;
+        let lookback =
+            (self.board_state.half_move_clock as usize).min(len - 1);
+
+        let mut i = 1;
+        while i <= lookback {
+            let state = self.board_state_stack[len - 1 - i];
+            if state.hash_keys.zobrist() == current {
+                return true;
+            }
+            i += 2;
+        }
+        false
+    }
+
     pub fn is_draw(&self) -> bool {
-        self.draw_by_fifty_moves() || self.draw_by_material() // TODO: Draw by repetition
+        self.draw_by_fifty_moves() || self.draw_by_material() || self.draw_by_repetition() // TODO: Draw by repetition
     }
 
     pub fn refresh_hash(&mut self) {
