@@ -1,2 +1,4 @@
 /target
 /tests/
+*.bin
+.idea/dictionaries/project.xml
