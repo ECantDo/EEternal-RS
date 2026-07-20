@@ -33,6 +33,7 @@ pub fn run_uci() {
             "uci" => {
                 println!("id name EeternalRS_V{}", env!("CARGO_PKG_VERSION"));
                 println!("id author ECanDo");
+                println!("option name EvalFile type string default <empty>");
                 println!("uciok");
             }
             "isready" => println!("readyok"),
@@ -52,6 +53,7 @@ pub fn run_uci() {
                     handle_go(board_clone, &rest, shared_data);
                 }));
             }
+            "setoption" => handle_setoption(rest),
             "stop" => shared_data.stop.store(true, Ordering::Relaxed),
             "quit" => {
                 shared_data.stop.store(true, Ordering::Relaxed);
@@ -123,8 +125,8 @@ fn handle_go(mut board: Board, rest: &str, shared_data: Arc<SharedData>) {
 
     let mut search_data = SearchData::new(Arc::from(shared_data));
     search_data.set_board(&board);
-    // TODO : Figure out overhead (guessing 5ms)
-    search_data.time_manager = TimeManager::new(limits, board.full_move_number(), 5);
+    // TODO : Figure out overhead (guessing 15ms)
+    search_data.time_manager = TimeManager::new(limits, board.full_move_number(), 15);
 
     let mv = start_search(&mut search_data);
     println!("bestmove {}", mv.to_uci(&board));
@@ -191,10 +193,30 @@ fn parse_uci_move(board: &mut Board, uci: &str) -> Option<crate::types::moves::M
         _ => None,
     });
 
-    let legal = board.generate_all_legal_moves();
+    let legal = board.generate_all_legal_moves(false);
     legal.into_iter().find(|mv| {
         mv.from() == from
             && mv.to() == to
             && (!mv.is_promotion() || Some(mv.promotion_piece_type()) == promo)
     })
+}
+
+fn handle_setoption(rest: &str) {
+    let Some(after_name) = rest.strip_prefix("name ") else {
+        return;
+    };
+
+    let Some(value_idx) = after_name.find(" value ") else {
+        return;
+    };
+
+    let name = after_name[..value_idx].trim();
+    let value = after_name[value_idx + " value ".len()..].trim();
+
+    // if name.eq_ignore_ascii_case("EvalFile") {
+    //     match crate::nnue::init_from_file(value) {
+    //         Ok(()) => println!("info string Loaded NNUE network from {value}"),
+    //         Err(e) => eprintln!("info string {e}"),
+    //     }
+    // }
 }

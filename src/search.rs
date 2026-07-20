@@ -4,8 +4,10 @@ use crate::types::moves::Move;
 use crate::types::score::Score;
 use crate::types::MAX_PLY;
 use std::sync::atomic::Ordering;
+use crate::search::qsearch::qsearch;
 
 pub mod search_types;
+mod qsearch;
 
 pub trait NodeType {
     const PV: bool;
@@ -31,7 +33,7 @@ impl NodeType for NonPV {
 }
 
 pub fn start_search(search_data: &mut SearchData) -> Move {
-    let mut moves = search_data.board.generate_all_legal_moves();
+    let mut moves = search_data.board.generate_all_legal_moves(false);
     debug_assert!(
         !moves.is_empty(),
         "start_search called on a position with no legal moves"
@@ -117,11 +119,11 @@ fn search<Node: NodeType>(
 
     // ============ Evaluate on depth 0 ============
     if depth <= 0 && !in_check {
-        return search_data.board.evaluate();
+        return qsearch::<NonPV>(search_data, alpha, beta, ply);
     }
 
     // ============ Generate Moves ============
-    let moves = search_data.board.generate_all_legal_moves();
+    let moves = search_data.board.generate_all_legal_moves(false);
 
     if moves.is_empty() {
         // Draw/Mate check
