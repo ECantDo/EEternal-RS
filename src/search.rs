@@ -119,13 +119,7 @@ fn search<Node: NodeType>(
 
     // ============ Evaluate on depth 0 ============
     if depth <= 0 {
-        let q = qsearch::<NonPV>(search_data, alpha, beta, 0);
-        if q > Score::MATE_IN_MAX {
-            return q - ply;
-        } else if q < -Score::MATE_IN_MAX {
-            return q + ply;
-        }
-        return q;
+        return qsearch::<NonPV>(search_data, alpha, beta, ply);
     }
 
     // ============ Generate Moves ============

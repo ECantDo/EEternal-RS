@@ -48,16 +48,13 @@ pub fn qsearch<NODE: NodeType>(
         }
     }
 
-    if ply as usize >= 10 { // Should be max ply ; 10 since run-away recursion is a problem
+    if ply as usize >= MAX_PLY { // Should be max ply ; 10 since run-away recursion is a problem
         return stand_pat;
     }
 
     let move_list = search_data.board.generate_all_legal_moves(!in_check);
 
     if move_list.is_empty() {
-        if in_check {
-            return Score::mated_in(ply as i32);
-        }
         return stand_pat;
     }
 
