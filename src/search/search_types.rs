@@ -1,3 +1,4 @@
+use crate::nnue::NNUE;
 use crate::time_manager::Limits;
 use crate::{
     board::Board,
@@ -32,10 +33,11 @@ pub struct SharedData {
 }
 pub struct SearchData {
     pub board: Board,
+    pub completed_depth: usize,
+    pub nnue: NNUE,
+    pub root_move: RootMove,
     pub shared_data: Arc<SharedData>,
     pub time_manager: TimeManager,
-    pub root_move: RootMove,
-    pub completed_depth: usize,
 }
 
 pub struct Counter {
@@ -70,12 +72,24 @@ impl Default for Counter {
 
 impl SearchData {
     pub fn new(shared: Arc<SharedData>) -> Self {
+        let board = Board::startpos();
+        let mut nnue = NNUE::new();
+        nnue.reset(&board);
         Self {
-            board: Board::startpos(),
+            board,
+            completed_depth: 0,
+            nnue,
+            root_move: RootMove::default(),
             shared_data: shared,
             time_manager: TimeManager::new(Limits::Infinite, 0, 0),
-            root_move: RootMove::default(),
-            completed_depth: 0,
+        }
+    }
+
+    pub fn evaluate(&mut self) -> i32 {
+        if self.nnue.is_active() {
+            self.nnue.evaluate(&self.board)
+        } else {
+            self.board.evaluate()
         }
     }
 

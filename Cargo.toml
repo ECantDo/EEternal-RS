@@ -1,6 +1,6 @@
 [package]
 name = "eeternal_rs"
-version = "0.0.3"
+version = "0.0.4"
 edition = "2024"
 authors = ["ECanDo"]
 
@@ -8,6 +8,11 @@ authors = ["ECanDo"]
 
 [build]
 rustflags = ["-C", "target-cpu=native"]
+
+[features]
+#default = ["embed-nnue", "avx2"]
+embed-nnue = []
+avx2 = []
 
 [profile.release]
 opt-level = 3

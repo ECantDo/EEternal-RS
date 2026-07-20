@@ -117,7 +117,7 @@ fn search<Node: NodeType>(
 
     // ============ Evaluate on depth 0 ============
     if depth <= 0 && !in_check {
-        return search_data.board.evaluate();
+        return search_data.evaluate();
     }
 
     // ============ Generate Moves ============
@@ -137,9 +137,11 @@ fn search<Node: NodeType>(
     let mut best_score = -Score::INF;
 
     for mv in &moves {
+        search_data.nnue.push(mv, &search_data.board);
         search_data.board.make_move(mv);
         let score = -search::<NonPV>(search_data, -beta, -alpha, depth - 1, ply + 1);
         search_data.board.undo_move(mv);
+        search_data.nnue.pop();
 
         if score.abs() >= Score::NONE {
             return score;
