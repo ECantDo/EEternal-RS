@@ -161,7 +161,7 @@ impl Board {
         while i <= lookback {
             let state = self.board_state_stack[len - 1 - i];
             if state.hash_keys.zobrist() == current {
-                return true;
+                // return true;
             }
             i += 2;
         }
@@ -169,7 +169,7 @@ impl Board {
     }
 
     pub fn is_draw(&self) -> bool {
-        self.draw_by_fifty_moves() || self.draw_by_material() || self.draw_by_repetition() // TODO: Draw by repetition
+        self.draw_by_fifty_moves() || self.draw_by_material() || self.draw_by_repetition()
     }
 
     pub fn refresh_hash(&mut self) {

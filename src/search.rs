@@ -8,6 +8,7 @@ use std::sync::atomic::Ordering;
 
 mod qsearch;
 pub mod search_types;
+pub mod see;
 
 pub trait NodeType {
     const PV: bool;
@@ -115,15 +116,19 @@ fn search<Node: NodeType>(
         return Score::NONE;
     }
 
-    let in_check = search_data.board.in_check();
-
     // ============ Evaluate on depth 0 ============
     if depth <= 0 {
         return qsearch::<NonPV>(search_data, alpha, beta, ply);
     }
 
+    if search_data.board.is_draw() {
+        return 0;
+    }
+
     // ============ Generate Moves ============
     let moves = search_data.board.generate_all_legal_moves(false);
+    let in_check = search_data.board.in_check();
+
 
     if moves.is_empty() {
         // Draw/Mate check

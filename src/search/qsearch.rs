@@ -5,6 +5,8 @@ use crate::types::moves::Move;
 use crate::types::score::Score;
 use crate::types::MAX_PLY;
 
+const DELTA_MARGIN: i32 = 200;
+
 pub fn qsearch<NODE: NodeType>(
     search_data: &mut SearchData,
     mut alpha: i32,
@@ -42,41 +44,76 @@ pub fn qsearch<NODE: NodeType>(
         if stand_pat >= beta {
             return stand_pat;
         }
-
         if stand_pat > alpha {
             alpha = stand_pat;
         }
     }
 
-    if ply as usize >= MAX_PLY { // Should be max ply ; 10 since run-away recursion is a problem
-        return stand_pat;
+    if ply as usize >= MAX_PLY {
+        return if in_check { search_data.board.evaluate() } else { stand_pat };
     }
 
     let move_list = search_data.board.generate_all_legal_moves(!in_check);
-
-    if move_list.is_empty() {
-        return stand_pat;
-    }
-
     let mut best_score: i32 = stand_pat;
 
-    for mv in &move_list {
-        search_data.board.make_move(mv);
-        let score = -qsearch::<NonPV>(search_data, -beta, -alpha, ply + 1);
-        search_data.board.undo_move(mv);
+    if !in_check {
+        // Order captures by SEE (best trades first) so cutoffs happen sooner,
+        // and prune losing/hopeless captures before ever making the move.
+        let mut scored: Vec<(Move, i32)> = (&move_list)
+            .into_iter()
+            .map(|mv| (mv, search_data.board.see(mv)))
+            .collect();
+        scored.sort_by(|a, b| b.1.cmp(&a.1));
 
-        if score.abs() >= Score::NONE {
-            return score;
-        }
+        for (mv, see_score) in scored {
+            // SEE pruning: skip captures that lose material outright.
+            if see_score < 0 {
+                continue;
+            }
 
-        if score > best_score {
-            best_score = score;
+            // Delta pruning: even winning this capture can't reach alpha.
+            let captured_value = search_data.board.get_piece_on_square(mv.to()).value().abs();
+            if stand_pat + captured_value + DELTA_MARGIN < alpha {
+                continue;
+            }
+
+            search_data.board.make_move(mv);
+            let score = -qsearch::<NonPV>(search_data, -beta, -alpha, ply + 1);
+            search_data.board.undo_move(mv);
+
+            if score.abs() >= Score::NONE {
+                return score;
+            }
+            if score > best_score {
+                best_score = score;
+            }
+            if score > alpha {
+                alpha = score;
+            }
+            if alpha >= beta {
+                break;
+            }
         }
-        if score > alpha {
-            alpha = score;
-        }
-        if alpha >= beta {
-            break
+    } else {
+        // In check: must search every evasion fully — no pruning, we need
+        // to know whether we can escape at all.
+        for mv in &move_list {
+            search_data.board.make_move(mv);
+            let score = -qsearch::<NonPV>(search_data, -beta, -alpha, ply + 1);
+            search_data.board.undo_move(mv);
+
+            if score.abs() >= Score::NONE {
+                return score;
+            }
+            if score > best_score {
+                best_score = score;
+            }
+            if score > alpha {
+                alpha = score;
+            }
+            if alpha >= beta {
+                break;
+            }
         }
     }
 
