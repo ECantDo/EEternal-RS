@@ -72,6 +72,8 @@ pub fn start_search(search_data: &mut SearchData) -> Move {
                 search_data.root_move.mv = mv;
                 search_data.root_move.score = score;
                 best_score = score;
+                // place best move first
+                // this is move ordering, but kinda bad move ordering...
                 moves.place_first(idx); // This is fine, I swear
                 // moves.swap(0, idx);
             }
