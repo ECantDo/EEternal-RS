@@ -1,10 +1,13 @@
+use crate::search::qsearch::qsearch;
 use crate::{
     search::search_types::SearchData,
     time_manager::Limits,
     types::{moves::Move, score::Score, tt::Bound, MAX_PLY},
 };
 use std::sync::atomic::Ordering;
+use crate::search::move_ordering::OrderedMoves;
 
+mod move_ordering;
 pub mod qsearch;
 pub mod search_types;
 pub mod see;
@@ -46,7 +49,7 @@ pub fn start_search(search_data: &mut SearchData) -> Move {
 
     search_data.shared_data.tt.new_search();
 
-    search_data.root_move.mv = moves.get(0);
+    search_data.root_move.mv = moves.get(0).mv();
 
     for root_depth in 1..=max_depth {
         let mut alpha = -Score::INF;
@@ -54,7 +57,8 @@ pub fn start_search(search_data: &mut SearchData) -> Move {
         let mut best_score = -Score::INF;
 
         let mut idx = 0;
-        for mv in &moves {
+        for move_entry in &moves {
+            let mv = move_entry.mv();
             search_data.board.make_move(mv);
             let score = -search::<Root>(search_data, -beta, -alpha, (root_depth - 1) as i32, 1);
             search_data.board.undo_move(mv);
@@ -129,17 +133,13 @@ fn search<Node: NodeType>(
         return Score::NONE;
     }
 
+    if search_data.board.is_draw() {
+        return 0;
+    }
+
     // ============ Evaluate on depth 0 ============
     if depth <= 0 {
         return qsearch::<NonPV>(search_data, alpha, beta, ply);
-    }
-
-    if search_data.board.is_draw() {
-        return 0;
-    if depth <= 0 && !in_check {
-        // TODO ; Remove the `in_check` check, this is hear as a really
-        //  dumb check extension
-        return search_data.board.evaluate();
     }
 
     // ============ TT Probe ============
@@ -157,11 +157,9 @@ fn search<Node: NodeType>(
         }
     }
 
-    let moves = search_data.board.generate_all_legal_moves();
     // ============ Generate Moves ============
-    let moves = search_data.board.generate_all_legal_moves(false);
+    let mut moves = search_data.board.generate_all_legal_moves(false);
     let in_check = search_data.board.in_check();
-
 
     if moves.is_empty() {
         // Draw/Mate check
@@ -169,16 +167,18 @@ fn search<Node: NodeType>(
             return Score::mated_in(ply);
         }
         return 0;
-    } else if depth <= 0 { // part 2 of the above `depth == 0 && in_check` check
-        return search_data.board.evaluate();
     }
+
+    let mut ordered_moves = OrderedMoves::new(&mut moves);
+    ordered_moves.score_moves(search_data, tt_probe.best_move);
 
     // ============ Search ============
     let mut best_score = -Score::INF;
     let mut best_move = tt_probe.best_move; // used for ordering later; fine as-is for now ; none by default
     let alpha_orig = alpha;
 
-    for mv in &moves {
+    for move_entry in ordered_moves {
+        let mv = move_entry.mv();
         search_data.board.make_move(mv);
         let score = -search::<NonPV>(search_data, -beta, -alpha, depth - 1, ply + 1);
         search_data.board.undo_move(mv);

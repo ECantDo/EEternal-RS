@@ -1,12 +1,20 @@
-use crate::board::Board;
-use crate::search::search_types::{SearchData, SharedData};
-use crate::search::start_search;
-use crate::time_manager::{Limits, TimeManager};
-use crate::types::color::Color;
-use crate::types::{piece::PieceType, square::Square};
-use std::io::{self, BufRead, Write};
-use std::sync::atomic::Ordering;
-use std::sync::Arc;
+use crate::{
+    board::Board,
+    search::{
+        search_types::{SearchData, SharedData},
+        start_search,
+    },
+    time_manager::{Limits, TimeManager},
+    types::{
+        {color::Color, moves::Move},
+        {piece::PieceType, square::Square},
+    },
+};
+use std::{
+    io::{self, BufRead, Write},
+    sync::{atomic::Ordering, Arc},
+};
+use crate::types::move_list::MoveEntry;
 
 pub fn run_uci() {
     let stdin = io::stdin();
@@ -92,7 +100,7 @@ fn handle_position(board: &mut Board, rest: &str) {
     if let Some(moves_str) = moves_part {
         for mv_str in moves_str.split_whitespace() {
             match parse_uci_move(board, mv_str) {
-                Some(mv) => board.make_move(mv),
+                Some(move_entry) => board.make_move(move_entry.mv()),
                 None => eprintln!("illegal/unrecognized move: {mv_str}"),
             }
         }
@@ -177,7 +185,7 @@ fn parse_limits(color: Color, tokens: &[&str]) -> Limits {
     }
 }
 
-fn parse_uci_move(board: &mut Board, uci: &str) -> Option<crate::types::moves::Move> {
+fn parse_uci_move(board: &mut Board, uci: &str) -> Option<MoveEntry> {
     if uci.len() < 4 {
         return None;
     }
@@ -194,11 +202,15 @@ fn parse_uci_move(board: &mut Board, uci: &str) -> Option<crate::types::moves::M
     });
 
     let legal = board.generate_all_legal_moves(false);
-    legal.into_iter().find(|mv| {
-        mv.from() == from
-            && mv.to() == to
-            && (!mv.is_promotion() || Some(mv.promotion_piece_type()) == promo)
-    })
+    legal
+        .into_iter()
+        .find(|move_entry| {
+            move_entry.mv().from() == from
+                && move_entry.mv().to() == to
+                && (!move_entry.mv().is_promotion()
+                    || Some(move_entry.mv().promotion_piece_type()) == promo)
+        })
+        
 }
 
 fn handle_setoption(rest: &str) {

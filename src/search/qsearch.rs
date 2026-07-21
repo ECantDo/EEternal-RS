@@ -1,9 +1,12 @@
+use crate::{
+    search::{
+        move_ordering::OrderedMoves,
+        search_types::SearchData,
+        {NodeType, NonPV},
+    },
+    types::{moves::Move, score::Score, MAX_PLY},
+};
 use std::sync::atomic::Ordering;
-use crate::search::search_types::SearchData;
-use crate::search::{NodeType, NonPV};
-use crate::types::moves::Move;
-use crate::types::score::Score;
-use crate::types::MAX_PLY;
 
 const DELTA_MARGIN: i32 = 200;
 
@@ -50,22 +53,24 @@ pub fn qsearch<NODE: NodeType>(
     }
 
     if ply as usize >= MAX_PLY {
-        return if in_check { search_data.board.evaluate() } else { stand_pat };
+        return if in_check {
+            search_data.board.evaluate()
+        } else {
+            stand_pat
+        };
     }
 
-    let move_list = search_data.board.generate_all_legal_moves(!in_check);
+    let mut move_list = search_data.board.generate_all_legal_moves(!in_check);
     let mut best_score: i32 = stand_pat;
+    let mut ordered_moves = OrderedMoves::new(&mut move_list);
+    ordered_moves.score_moves(search_data, Move::NONE);
 
-    if !in_check {
-        // Order captures by SEE (best trades first) so cutoffs happen sooner,
-        // and prune losing/hopeless captures before ever making the move.
-        let mut scored: Vec<(Move, i32)> = (&move_list)
-            .into_iter()
-            .map(|mv| (mv, search_data.board.see(mv)))
-            .collect();
-        scored.sort_by(|a, b| b.1.cmp(&a.1));
+    for move_entry in ordered_moves {
+        let mv = move_entry.mv();
+        let see_score = move_entry.score();
 
-        for (mv, see_score) in scored {
+        // Don't prune when in check ; must search all positions
+        if !in_check {
             // SEE pruning: skip captures that lose material outright.
             if see_score < 0 {
                 continue;
@@ -76,44 +81,23 @@ pub fn qsearch<NODE: NodeType>(
             if stand_pat + captured_value + DELTA_MARGIN < alpha {
                 continue;
             }
-
-            search_data.board.make_move(mv);
-            let score = -qsearch::<NonPV>(search_data, -beta, -alpha, ply + 1);
-            search_data.board.undo_move(mv);
-
-            if score.abs() >= Score::NONE {
-                return score;
-            }
-            if score > best_score {
-                best_score = score;
-            }
-            if score > alpha {
-                alpha = score;
-            }
-            if alpha >= beta {
-                break;
-            }
         }
-    } else {
-        // In check: must search every evasion fully — no pruning, we need
-        // to know whether we can escape at all.
-        for mv in &move_list {
-            search_data.board.make_move(mv);
-            let score = -qsearch::<NonPV>(search_data, -beta, -alpha, ply + 1);
-            search_data.board.undo_move(mv);
 
-            if score.abs() >= Score::NONE {
-                return score;
-            }
-            if score > best_score {
-                best_score = score;
-            }
-            if score > alpha {
-                alpha = score;
-            }
-            if alpha >= beta {
-                break;
-            }
+        search_data.board.make_move(mv);
+        let score = -qsearch::<NonPV>(search_data, -beta, -alpha, ply + 1);
+        search_data.board.undo_move(mv);
+
+        if score.abs() >= Score::NONE {
+            return score;
+        }
+        if score > best_score {
+            best_score = score;
+        }
+        if score > alpha {
+            alpha = score;
+        }
+        if alpha >= beta {
+            break;
         }
     }
 

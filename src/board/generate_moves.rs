@@ -98,7 +98,7 @@ impl super::Board {
 
         let mut idx = 0;
         while idx < ml.len() {
-            let mv = ml.get(idx);
+            let mv = ml.get(idx).mv();
             let from = mv.from();
             let is_en_passant = mv.is_en_passant();
 
