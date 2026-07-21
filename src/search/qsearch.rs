@@ -1,6 +1,6 @@
 use crate::{
     search::{
-        move_ordering::OrderedMoves,
+        move_ordering::{OrderedMoves, CAPTURE_VALUE},
         search_types::SearchData,
         {NodeType, NonPV},
     },
@@ -67,10 +67,10 @@ pub fn qsearch<NODE: NodeType>(
 
     for move_entry in ordered_moves {
         let mv = move_entry.mv();
-        let see_score = move_entry.score();
 
         // Don't prune when in check ; must search all positions
         if !in_check {
+            let see_score = move_entry.score() - CAPTURE_VALUE;
             // SEE pruning: skip captures that lose material outright.
             if see_score < 0 {
                 continue;

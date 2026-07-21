@@ -9,6 +9,8 @@ pub struct OrderedMoves<'a> {
     idx: usize,
 }
 
+pub const CAPTURE_VALUE: i32 = 1_000_000;
+
 impl<'a> OrderedMoves<'a> {
     pub fn new(move_list: &'a mut MoveList) -> Self {
         Self { move_list, idx: 0 }
@@ -20,7 +22,7 @@ impl<'a> OrderedMoves<'a> {
             let score = if mv == tt_move {
                 i32::MAX
             } else if mv.is_capture() {
-                1_000_000 + search_data.board.see(mv)
+                CAPTURE_VALUE + search_data.board.see(mv)
             } else {
                 0
             };
