@@ -1,8 +1,8 @@
-use crate::search::search_types::SearchData;
-use crate::time_manager::Limits;
-use crate::types::moves::Move;
-use crate::types::score::Score;
-use crate::types::MAX_PLY;
+use crate::{
+    search::search_types::SearchData,
+    time_manager::Limits,
+    types::{moves::Move, score::Score, tt::Bound, MAX_PLY},
+};
 use std::sync::atomic::Ordering;
 
 pub mod search_types;
@@ -42,6 +42,8 @@ pub fn start_search(search_data: &mut SearchData) -> Move {
         _ => MAX_PLY - 1,
     };
 
+    search_data.shared_data.tt.new_search();
+
     search_data.root_move.mv = moves.get(0);
 
     for root_depth in 1..=max_depth {
@@ -80,6 +82,18 @@ pub fn start_search(search_data: &mut SearchData) -> Move {
             }
             idx += 1
         }
+
+        // Store the root result too — future iterations (and any tool that
+        // probes the TT at the startpos) get the benefit of this depth.
+        search_data.shared_data.tt.store(
+            search_data.board.hash(),
+            search_data.root_move.mv,
+            root_depth as i32,
+            best_score,
+            Bound::Exact,
+            0,
+        );
+
         search_data.completed_depth = root_depth;
         println!("{}", search_data.to_uci_info());
 
@@ -117,10 +131,26 @@ fn search<Node: NodeType>(
 
     // ============ Evaluate on depth 0 ============
     if depth <= 0 && !in_check {
+        // TODO ; Remove the `in_check` check, this is hear as a really
+        //  dumb check extension
         return search_data.board.evaluate();
     }
 
-    // ============ Generate Moves ============
+    // ============ TT Probe ============
+    let hash = search_data.board.hash();
+    let tt_probe = search_data
+        .shared_data
+        .tt
+        .probe(hash, depth, alpha, beta, ply);
+    if let Some(score) = tt_probe.score {
+        // Don't cut PV nodes short on a TT hit — we need to walk this line
+        // ourselves to build an accurate principal variation, not just know
+        // its final score.
+        if !Node::PV {
+            return score;
+        }
+    }
+
     let moves = search_data.board.generate_all_legal_moves();
 
     if moves.is_empty() {
@@ -129,12 +159,14 @@ fn search<Node: NodeType>(
             return Score::mated_in(ply);
         }
         return 0;
-    } else if depth <= 0 {
+    } else if depth <= 0 { // part 2 of the above `depth == 0 && in_check` check
         return search_data.board.evaluate();
     }
 
     // ============ Search ============
     let mut best_score = -Score::INF;
+    let mut best_move = tt_probe.best_move; // used for ordering later; fine as-is for now ; none by default
+    let alpha_orig = alpha;
 
     for mv in &moves {
         search_data.board.make_move(mv);
@@ -149,6 +181,7 @@ fn search<Node: NodeType>(
 
         if score > best_score {
             best_score = score;
+            best_move = mv;
         }
         if score > alpha {
             alpha = score;
@@ -157,6 +190,19 @@ fn search<Node: NodeType>(
             break;
         }
     }
+
+    // ============ TT Store ============
+    let bound = if best_score >= beta {
+        Bound::Lower
+    } else if best_score <= alpha_orig {
+        Bound::Upper
+    } else {
+        Bound::Exact
+    };
+    search_data
+        .shared_data
+        .tt
+        .store(hash, best_move, depth, best_score, bound, ply);
 
     best_score
 }

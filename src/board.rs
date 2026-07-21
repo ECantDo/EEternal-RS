@@ -169,7 +169,7 @@ impl Board {
     }
 
     pub fn is_draw(&self) -> bool {
-        self.draw_by_fifty_moves() || self.draw_by_material() || self.draw_by_repetition() // TODO: Draw by repetition
+        self.draw_by_fifty_moves() || self.draw_by_material() || self.draw_by_repetition()
     }
 
     pub fn refresh_hash(&mut self) {
