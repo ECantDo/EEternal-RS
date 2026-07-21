@@ -161,7 +161,7 @@ impl Board {
         while i <= lookback {
             let state = self.board_state_stack[len - 1 - i];
             if state.hash_keys.zobrist() == current {
-                return true;
+                // return true;
             }
             i += 2;
         }

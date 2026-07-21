@@ -83,8 +83,8 @@ impl super::Board {
 }
 
 impl super::Board {
-    pub fn generate_all_legal_moves(&mut self) -> MoveList {
-        let mut ml = self.generate_all_pseudolegal_moves();
+    pub fn generate_all_legal_moves(&mut self, captures_only: bool) -> MoveList {
+        let mut ml = self.generate_all_pseudolegal_moves(captures_only);
 
         let stm = self.side_to_move();
         let king_sq = self.king_square(stm);
@@ -138,14 +138,14 @@ impl super::Board {
             || self.is_square_attacked(king_to, !stm)
     }
 
-    pub fn generate_all_pseudolegal_moves(&self) -> MoveList {
+    pub fn generate_all_pseudolegal_moves(&self, captures_only: bool) -> MoveList {
         let mut ml = MoveList::new();
-        self.append_pawn_moves(&mut ml, false); // from earlier
-        self.append_knight_moves(&mut ml, false);
-        self.append_bishop_moves(&mut ml, false);
-        self.append_rook_moves(&mut ml, false);
-        self.append_queen_moves(&mut ml, false);
-        self.append_king_moves(&mut ml, false);
+        self.append_pawn_moves(&mut ml, captures_only); // from earlier
+        self.append_knight_moves(&mut ml, captures_only);
+        self.append_bishop_moves(&mut ml, captures_only);
+        self.append_rook_moves(&mut ml, captures_only);
+        self.append_queen_moves(&mut ml, captures_only);
+        self.append_king_moves(&mut ml, captures_only);
         ml
     }
 

@@ -60,7 +60,7 @@ impl Board {
             return 1;
         }
 
-        let ml = self.generate_all_legal_moves();
+        let ml = self.generate_all_legal_moves(false);
 
         if depth == 1 {
             return ml.len() as u64;
@@ -79,7 +79,7 @@ impl Board {
             return 1;
         }
 
-        let ml = self.generate_all_legal_moves();
+        let ml = self.generate_all_legal_moves(false);
 
         let mut nodes = 0;
         for mv in &ml {

@@ -5,7 +5,9 @@ use crate::{
 };
 use std::sync::atomic::Ordering;
 
+pub mod qsearch;
 pub mod search_types;
+pub mod see;
 
 pub trait NodeType {
     const PV: bool;
@@ -31,7 +33,7 @@ impl NodeType for NonPV {
 }
 
 pub fn start_search(search_data: &mut SearchData) -> Move {
-    let mut moves = search_data.board.generate_all_legal_moves();
+    let mut moves = search_data.board.generate_all_legal_moves(false);
     debug_assert!(
         !moves.is_empty(),
         "start_search called on a position with no legal moves"
@@ -127,9 +129,13 @@ fn search<Node: NodeType>(
         return Score::NONE;
     }
 
-    let in_check = search_data.board.in_check();
-
     // ============ Evaluate on depth 0 ============
+    if depth <= 0 {
+        return qsearch::<NonPV>(search_data, alpha, beta, ply);
+    }
+
+    if search_data.board.is_draw() {
+        return 0;
     if depth <= 0 && !in_check {
         // TODO ; Remove the `in_check` check, this is hear as a really
         //  dumb check extension
@@ -152,6 +158,10 @@ fn search<Node: NodeType>(
     }
 
     let moves = search_data.board.generate_all_legal_moves();
+    // ============ Generate Moves ============
+    let moves = search_data.board.generate_all_legal_moves(false);
+    let in_check = search_data.board.in_check();
+
 
     if moves.is_empty() {
         // Draw/Mate check
