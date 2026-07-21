@@ -1,11 +1,16 @@
-use crate::search::search_types::SearchData;
-use crate::time_manager::Limits;
-use crate::types::moves::Move;
-use crate::types::score::Score;
-use crate::types::MAX_PLY;
+use crate::search::qsearch::qsearch;
+use crate::{
+    search::search_types::SearchData,
+    time_manager::Limits,
+    types::{moves::Move, score::Score, tt::Bound, MAX_PLY},
+};
 use std::sync::atomic::Ordering;
+use crate::search::move_ordering::OrderedMoves;
 
+mod move_ordering;
+pub mod qsearch;
 pub mod search_types;
+pub mod see;
 
 pub trait NodeType {
     const PV: bool;
@@ -31,7 +36,7 @@ impl NodeType for NonPV {
 }
 
 pub fn start_search(search_data: &mut SearchData) -> Move {
-    let mut moves = search_data.board.generate_all_legal_moves();
+    let mut moves = search_data.board.generate_all_legal_moves(false);
     debug_assert!(
         !moves.is_empty(),
         "start_search called on a position with no legal moves"
@@ -42,7 +47,9 @@ pub fn start_search(search_data: &mut SearchData) -> Move {
         _ => MAX_PLY - 1,
     };
 
-    search_data.root_move.mv = moves.get(0);
+    search_data.shared_data.tt.new_search();
+
+    search_data.root_move.mv = moves.get(0).mv();
 
     for root_depth in 1..=max_depth {
         let mut alpha = -Score::INF;
@@ -50,7 +57,8 @@ pub fn start_search(search_data: &mut SearchData) -> Move {
         let mut best_score = -Score::INF;
 
         let mut idx = 0;
-        for mv in &moves {
+        for move_entry in &moves {
+            let mv = move_entry.mv();
             search_data.board.make_move(mv);
             let score = -search::<Root>(search_data, -beta, -alpha, (root_depth - 1) as i32, 1);
             search_data.board.undo_move(mv);
@@ -64,6 +72,8 @@ pub fn start_search(search_data: &mut SearchData) -> Move {
                 search_data.root_move.mv = mv;
                 search_data.root_move.score = score;
                 best_score = score;
+                // place best move first
+                // this is move ordering, but kinda bad move ordering...
                 moves.place_first(idx); // This is fine, I swear
                 // moves.swap(0, idx);
             }
@@ -80,6 +90,18 @@ pub fn start_search(search_data: &mut SearchData) -> Move {
             }
             idx += 1
         }
+
+        // Store the root result too — future iterations (and any tool that
+        // probes the TT at the startpos) get the benefit of this depth.
+        search_data.shared_data.tt.store(
+            search_data.board.hash(),
+            search_data.root_move.mv,
+            root_depth as i32,
+            best_score,
+            Bound::Exact,
+            0,
+        );
+
         search_data.completed_depth = root_depth;
         println!("{}", search_data.to_uci_info());
 
@@ -113,15 +135,33 @@ fn search<Node: NodeType>(
         return Score::NONE;
     }
 
-    let in_check = search_data.board.in_check();
+    if search_data.board.is_draw() {
+        return 0;
+    }
 
     // ============ Evaluate on depth 0 ============
-    if depth <= 0 && !in_check {
-        return search_data.evaluate();
+    if depth <= 0 {
+        return qsearch::<NonPV>(search_data, alpha, beta, ply);
+    }
+
+    // ============ TT Probe ============
+    let hash = search_data.board.hash();
+    let tt_probe = search_data
+        .shared_data
+        .tt
+        .probe(hash, depth, alpha, beta, ply);
+    if let Some(score) = tt_probe.score {
+        // Don't cut PV nodes short on a TT hit — we need to walk this line
+        // ourselves to build an accurate principal variation, not just know
+        // its final score.
+        if !Node::PV {
+            return score;
+        }
     }
 
     // ============ Generate Moves ============
-    let moves = search_data.board.generate_all_legal_moves();
+    let mut moves = search_data.board.generate_all_legal_moves(false);
+    let in_check = search_data.board.in_check();
 
     if moves.is_empty() {
         // Draw/Mate check
@@ -129,15 +169,18 @@ fn search<Node: NodeType>(
             return Score::mated_in(ply);
         }
         return 0;
-    } else if depth <= 0 {
-        return search_data.board.evaluate();
     }
+
+    let mut ordered_moves = OrderedMoves::new(&mut moves);
+    ordered_moves.score_moves(search_data, tt_probe.best_move);
 
     // ============ Search ============
     let mut best_score = -Score::INF;
+    let mut best_move = tt_probe.best_move; // used for ordering later; fine as-is for now ; none by default
+    let alpha_orig = alpha;
 
-    for mv in &moves {
-        search_data.nnue.push(mv, &search_data.board);
+    for move_entry in ordered_moves {
+        let mv = move_entry.mv();
         search_data.board.make_move(mv);
         let score = -search::<NonPV>(search_data, -beta, -alpha, depth - 1, ply + 1);
         search_data.board.undo_move(mv);
@@ -151,6 +194,7 @@ fn search<Node: NodeType>(
 
         if score > best_score {
             best_score = score;
+            best_move = mv;
         }
         if score > alpha {
             alpha = score;
@@ -159,6 +203,19 @@ fn search<Node: NodeType>(
             break;
         }
     }
+
+    // ============ TT Store ============
+    let bound = if best_score >= beta {
+        Bound::Lower
+    } else if best_score <= alpha_orig {
+        Bound::Upper
+    } else {
+        Bound::Exact
+    };
+    search_data
+        .shared_data
+        .tt
+        .store(hash, best_move, depth, best_score, bound, ply);
 
     best_score
 }

@@ -1,12 +1,20 @@
-use crate::board::Board;
-use crate::search::search_types::{SearchData, SharedData};
-use crate::search::start_search;
-use crate::time_manager::{Limits, TimeManager};
-use crate::types::color::Color;
-use crate::types::{piece::PieceType, square::Square};
-use std::io::{self, BufRead, Write};
-use std::sync::atomic::Ordering;
-use std::sync::Arc;
+use crate::{
+    board::Board,
+    search::{
+        search_types::{SearchData, SharedData},
+        start_search,
+    },
+    time_manager::{Limits, TimeManager},
+    types::{
+        {color::Color, moves::Move},
+        {piece::PieceType, square::Square},
+    },
+};
+use std::{
+    io::{self, BufRead, Write},
+    sync::{atomic::Ordering, Arc},
+};
+use crate::types::move_list::MoveEntry;
 
 pub fn run_uci() {
     let stdin = io::stdin();
@@ -92,7 +100,7 @@ fn handle_position(board: &mut Board, rest: &str) {
     if let Some(moves_str) = moves_part {
         for mv_str in moves_str.split_whitespace() {
             match parse_uci_move(board, mv_str) {
-                Some(mv) => board.make_move(mv),
+                Some(move_entry) => board.make_move(move_entry.mv()),
                 None => eprintln!("illegal/unrecognized move: {mv_str}"),
             }
         }
@@ -125,8 +133,8 @@ fn handle_go(mut board: Board, rest: &str, shared_data: Arc<SharedData>) {
 
     let mut search_data = SearchData::new(Arc::from(shared_data));
     search_data.set_board(&board);
-    // TODO : Figure out overhead (guessing 5ms)
-    search_data.time_manager = TimeManager::new(limits, board.full_move_number(), 5);
+    // TODO : Figure out overhead (guessing 15ms)
+    search_data.time_manager = TimeManager::new(limits, board.full_move_number(), 15);
 
     let mv = start_search(&mut search_data);
     println!("bestmove {}", mv.to_uci(&board));
@@ -177,7 +185,7 @@ fn parse_limits(color: Color, tokens: &[&str]) -> Limits {
     }
 }
 
-fn parse_uci_move(board: &mut Board, uci: &str) -> Option<crate::types::moves::Move> {
+fn parse_uci_move(board: &mut Board, uci: &str) -> Option<MoveEntry> {
     if uci.len() < 4 {
         return None;
     }
@@ -193,12 +201,36 @@ fn parse_uci_move(board: &mut Board, uci: &str) -> Option<crate::types::moves::M
         _ => None,
     });
 
-    let legal = board.generate_all_legal_moves();
-    legal.into_iter().find(|mv| {
-        mv.from() == from
-            && mv.to() == to
-            && (!mv.is_promotion() || Some(mv.promotion_piece_type()) == promo)
-    })
+    let legal = board.generate_all_legal_moves(false);
+    legal
+        .into_iter()
+        .find(|move_entry| {
+            move_entry.mv().from() == from
+                && move_entry.mv().to() == to
+                && (!move_entry.mv().is_promotion()
+                    || Some(move_entry.mv().promotion_piece_type()) == promo)
+        })
+        
+}
+
+fn handle_setoption(rest: &str) {
+    let Some(after_name) = rest.strip_prefix("name ") else {
+        return;
+    };
+
+    let Some(value_idx) = after_name.find(" value ") else {
+        return;
+    };
+
+    let name = after_name[..value_idx].trim();
+    let value = after_name[value_idx + " value ".len()..].trim();
+
+    // if name.eq_ignore_ascii_case("EvalFile") {
+    //     match crate::nnue::init_from_file(value) {
+    //         Ok(()) => println!("info string Loaded NNUE network from {value}"),
+    //         Err(e) => eprintln!("info string {e}"),
+    //     }
+    // }
 }
 
 fn handle_setoption(rest: &str) {

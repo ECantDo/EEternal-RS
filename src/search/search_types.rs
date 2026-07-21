@@ -10,6 +10,7 @@ use std::sync::{
     atomic::{AtomicU64, Ordering},
     Arc,
 };
+use crate::types::tt::TranspositionTable;
 
 #[derive(Clone)]
 pub struct RootMove {
@@ -30,6 +31,7 @@ pub struct SharedData {
     // tt
     pub nodes: Counter,
     pub stop: AtomicBool,
+    pub tt: TranspositionTable
 }
 pub struct SearchData {
     pub board: Board,
@@ -149,6 +151,7 @@ impl SharedData {
         Self {
             nodes: Counter::default(),
             stop: AtomicBool::new(false),
+            tt: TranspositionTable::new(16)
         }
     }
 }

@@ -60,17 +60,17 @@ impl Board {
             return 1;
         }
 
-        let ml = self.generate_all_legal_moves();
+        let ml = self.generate_all_legal_moves(false);
 
         if depth == 1 {
             return ml.len() as u64;
         }
 
         let mut nodes = 0;
-        for mv in &ml {
-            self.make_move(mv);
+        for move_entry in &ml {
+            self.make_move(move_entry.mv());
             nodes += self.perft_bulk(depth - 1);
-            self.undo_move(mv);
+            self.undo_move(move_entry.mv());
         }
         nodes
     }
@@ -79,13 +79,13 @@ impl Board {
             return 1;
         }
 
-        let ml = self.generate_all_legal_moves();
+        let ml = self.generate_all_legal_moves(false);
 
         let mut nodes = 0;
-        for mv in &ml {
-            self.make_move(mv);
+        for move_entry in &ml {
+            self.make_move(move_entry.mv());
             nodes += self.perft(depth - 1);
-            self.undo_move(mv);
+            self.undo_move(move_entry.mv());
         }
         nodes
     }

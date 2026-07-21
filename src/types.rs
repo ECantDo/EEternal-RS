@@ -8,9 +8,10 @@ pub mod piece;
 pub mod square;
 pub mod zobrist;
 pub mod score;
+pub mod tt;
 
 // Likely needs to be changed, just some value for now
-pub const MAX_PLY: usize = 256;
+pub const MAX_PLY: usize = 255;
 
 // Max moves in a position is 218; memory-wise 256 makes sense to me
 pub const MAX_MOVES: usize = 256;
