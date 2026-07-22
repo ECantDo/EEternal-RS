@@ -95,6 +95,16 @@ impl SearchData {
         }
     }
 
+    pub fn make_move(&mut self, mv: Move){
+        self.nnue.push(mv, &self.board);
+        self.board.make_move(mv);
+    }
+    
+    pub fn undo_move(&mut self, mv: Move){
+        self.board.undo_move(mv);
+        self.nnue.pop();
+    }
+
     pub fn set_board(&mut self, board: &Board) {
         self.board = board.clone();
     }

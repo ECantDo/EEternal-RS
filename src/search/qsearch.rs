@@ -80,11 +80,9 @@ pub fn qsearch<NODE: NodeType>(
             }
         }
 
-        search_data.nnue.push(mv, &search_data.board);
-        search_data.board.make_move(mv);
+        search_data.make_move(mv);
         let score = -qsearch::<NonPV>(search_data, -beta, -alpha, ply + 1);
-        search_data.board.undo_move(mv);
-        search_data.nnue.pop();
+        search_data.undo_move(mv);
 
         if score.abs() >= Score::NONE {
             return score;

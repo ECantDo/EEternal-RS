@@ -22,7 +22,5 @@ pub fn initialize() {
     } else {
         println!("info string No NNUE network found, using classical evaluation");
     }
-    #[cfg(not(feature = "embed-nnue"))]
-    println!("info not loading NNUE");
     uci::run_uci();
 }
