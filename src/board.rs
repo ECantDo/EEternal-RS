@@ -30,8 +30,8 @@ struct BoardState {
     checkers: Bitboard,
     pinned: [Bitboard; Color::NUM],
     pinners: [Bitboard; Color::NUM],
-    piece_threats: [Bitboard; Piece::NUM],
-    all_threats: Bitboard,
+    piece_threats: [[Bitboard; PieceType::NUM]; Color::NUM],
+    threats_by: [Bitboard; Color::NUM],
 }
 
 #[derive(Clone)]
@@ -203,18 +203,13 @@ impl Board {
             .toggle_castling(self.board_state.castling);
     }
 
-    pub fn is_square_attacked(&self, square: Square, by: Color) -> bool {
-        let occ = self.occupancies();
-        let bishops_queens = self.pieces(PieceType::Bishop) | self.pieces(PieceType::Queen);
-        let rooks_queens = self.pieces(PieceType::Rook) | self.pieces(PieceType::Queen);
-        let their = self.color_bitboards[by];
+    pub fn piece_type_attacks(&self, color: Color, piece_type: PieceType) -> Bitboard{
+        debug_assert!(piece_type != PieceType::None);
+        self.board_state.piece_threats[color][piece_type]
+    }
 
-        // Don't worry about king attacks ... the king can never attack the king
-        (get_pawn_attacks(square, !by) & self.pieces(PieceType::Pawn) & their).not_empty()
-            || (get_knight_attacks(square) & self.pieces(PieceType::Knight) & their).not_empty()
-            || (get_king_attacks(square) & self.pieces(PieceType::King) & their).not_empty()
-            || (get_bishop_attacks(square, occ) & bishops_queens & their).not_empty()
-            || (get_rook_attacks(square, occ) & rooks_queens & their).not_empty()
+    pub fn is_square_attacked(&self, square: Square, by: Color) -> bool {
+        (self.board_state.threats_by[by] & square.to_bitboard()).not_empty()
     }
 }
 

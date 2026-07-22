@@ -159,6 +159,8 @@ impl Board {
     pub fn refresh_piece_threats(&mut self) {
         let stm = self.side_to_move();
         let occ = self.occupancies();
+        self.board_state.threats_by = [Bitboard(0); Color::NUM];
+
 
         for color in Color::ALL {
             let occ_missing_their_king = occ ^ self.colored_pieces(!color, PieceType::King);
@@ -184,11 +186,9 @@ impl Board {
                     attacked |= get_attack(sq, occ_missing_their_king);
                 }
 
-                if color != stm {
-                    self.board_state.all_threats |= attacked;
-                }
 
-                self.board_state.piece_threats[Piece::new(color, piece_type)] = attacked;
+                self.board_state.threats_by[color] |= attacked;
+                self.board_state.piece_threats[color][piece_type] = attacked;
             }
         }
     }
