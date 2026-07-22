@@ -24,6 +24,8 @@ the engine back to where I left the C++ engine, then get to 3000+ ELO.
 | 0.0.4          | [Transposition Table](https://www.chessprogramming.org/Transposition_Table); The engine can store previous positions. <br> [Move Ordering](https://www.chessprogramming.org/Move_Ordering) + SEE; Since the engine had TTs, and that the move ordering sucked, adding a way to order the best move from the TT seemed like a good idea. <br> I decided to use SEE ([Static Exchange Evaluation](https://www.chessprogramming.org/Static_Exchange_Evaluation)) to help order moves. <br> While I was at it, I also added [Quiescence Search](https://www.chessprogramming.org/Quiescence_Search), since I am also wanting to add my NNUE, and Q Search was having issues by itself. |
 | 0.0.5          | It finally happend, I re-implemented my [NNUE](https://www.chessprogramming.org/NNUE) (Efficiently Updateable Neural Networks). Likely my biggest gain since version 0.0.2.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 
+\*_[See below](#approx-elo) for the ELO improvement_
+
 ### UCI
 
 The following UCI commands are implemented:
@@ -38,7 +40,7 @@ The following UCI commands are implemented:
 | go perft     | Runs (non-bulk) perft for the current position       |
 | go bulkperft | Runs bulk perft for the current position             |
 | quit         | Stops the engine                                     |
-| Stop         | Stops the current search                             |
+| stop         | Stops the current search                             |
 | d            | Display the current board state                      |
 
 ---
@@ -60,23 +62,23 @@ The ELO has been calculated based on engines that played in
 of the Swiss and Knockout games played. The ELOs are based on the
 [Boychesser](https://github.com/analog-hors/Boychesser) engine (ELO: 2772 +/- 11, at the time)
 
-I have downloaded some bots in the surrounding area where my engine is roughly located,
-and played games against those bots.
+Games are played with a time control of `10+0.1s`, and with an opening book of 8 moves,
+each engine gets the chance to play as both white and black, from the same position.
 
-| Version Number | Approx ELO  | VS                                                                                   | VS Elo (Assumed) | WLD                            |
-|----------------|-------------|--------------------------------------------------------------------------------------|------------------|--------------------------------|
-| 0.0.5          | 2393 +/- 20 | Game Tech Explained Bot (by: Game Tech Explained), TinyHugeBot (by: Popax21 & atpx8) | 1713, 2513       | (986, 6, 8), (222, 565, 212)   |
-| 0.0.4          | 1399 +/- 17 | DLComp2 (by: DawnLamp8), applemethod-orz (by: RedBlackTree)                          | 1387, 1085       | (526, 459, 15), (789, 94, 117) |
-| 0.0.3          | 1371 +/- 16 | applemethod-orz (by: RedBlackTree)                                                   | 1085             | Not Saved                      |
-| 0.0.2          | 1098 +/- 12 | Turochamp (Faithful) (by: P Rivero)                                                  | 1026             | Not Saved                      |
-| 0.0.1          | 1           | N/A                                                                                  | N/A              | N/A                            |
+| Version Number                                                          | Approx ELO      | VS                                                                                       | VS Elo (Assumed) | WLD                            |
+|-------------------------------------------------------------------------|-----------------|------------------------------------------------------------------------------------------|------------------|--------------------------------|
+| [0.0.5](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.0.5)     | **2393 +/- 20** | `Game Tech Explained Bot` (by: Game Tech Explained), `TinyHugeBot` (by: Popax21 & atpx8) | 1713, 2513       | (986, 6, 8), (222, 565, 212)   |
+| [0.0.4](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.0.4)     | **1399 +/- 17** | `DLComp2` (by: DawnLamp8), `applemethod-orz` (by: RedBlackTree)                          | 1387, 1085       | (526, 459, 15), (789, 94, 117) |
+| [0.0.3](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.0.3)     | **1371 +/- 16** | `applemethod-orz` (by: RedBlackTree)                                                     | 1085             | Not Saved                      |
+| [0.0.2](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.0.2)     | **1098 +/- 12** | `Turochamp` (Faithful) (by: P Rivero)                                                    | 1026             | Not Saved                      |
+| [0.0.1](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.0.1-RNG) | **1**           | N/A                                                                                      | N/A              | N/A                            |
 
 ## Elo Calculation
 
 _As of V0.0.4_
 
 The ELO is calculated based on assuming that the *guessed* ELO ratings are the *true* ratings.
-That leads into the elo ratings are still only approximate, but still can be wildly off. The more
+That leads into the elo ratings are still approximate, but can still be wildly off. The more
 games that are played, the better approximation that we can get, relative to the assumed true
 ELO ratings of the played bots.
 
