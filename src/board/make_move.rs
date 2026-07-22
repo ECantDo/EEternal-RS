@@ -1,6 +1,11 @@
 use crate::{
+    attacking::{
+        get_bishop_attacks, get_king_attacks, get_knight_attacks, get_pawn_attacks,
+        get_queen_attacks, get_rook_attacks,
+    },
     board::Board,
     types::{
+        bitboard::Bitboard,
         castling::{castling_rook_squares, CASTLING_RIGHTS},
         color::Color,
         moves::{Move, MoveFlag},
@@ -14,7 +19,7 @@ impl Board {
     pub fn make_move(&mut self, mv: Move) {
         let from = mv.from();
         let to = mv.to();
-        let piece = self.get_piece_on_square(from);
+        let my_piece = self.get_piece_on_square(from);
         let stm = self.side_to_move();
 
         self.board_state_stack.push(self.board_state);
@@ -28,7 +33,7 @@ impl Board {
         }
 
         // Fifty-move rule
-        if piece.piece_type() == PieceType::Pawn || mv.is_capture() {
+        if my_piece.piece_type() == PieceType::Pawn || mv.is_capture() {
             self.board_state.half_move_clock = 0;
         } else {
             self.board_state.half_move_clock = self.board_state.half_move_clock.saturating_add(1);
@@ -39,12 +44,12 @@ impl Board {
         if mv.is_castling() {
             let (rook_from, rook_to) = castling_rook_squares(stm, mv.flag());
             self.remove_piece(from);
-            self.add_piece(piece, to);
+            self.add_piece(my_piece, to);
             let rook = self.remove_piece(rook_from);
             self.add_piece(rook, rook_to);
         } else if mv.is_en_passant() {
             self.remove_piece(from);
-            self.add_piece(piece, to);
+            self.add_piece(my_piece, to);
             let cap_sq = to.shift(-UP_DIR[stm]);
             self.board_state.captured = self.remove_piece(cap_sq);
         } else {
@@ -59,7 +64,7 @@ impl Board {
                 self.board_state.material +=
                     new_piece.value() - Piece::new(stm, PieceType::Pawn).value();
             } else {
-                self.add_piece(piece, to);
+                self.add_piece(my_piece, to);
 
                 if mv.flag() == MoveFlag::DoublePush {
                     self.board_state.en_passant = Square::new(((from as u8) + (to as u8)) / 2);
@@ -83,6 +88,9 @@ impl Board {
 
         self.board_state.hash_keys.toggle_side();
         self.half_move_number += 1;
+
+        // Refresh threats when switching moves.
+        self.refresh_piece_threats();
 
         #[cfg(debug_assertions)]
         self.assert_material_consistent();
@@ -121,7 +129,7 @@ impl Board {
         // The material doesn't need to be changed, it is saved on the stack
 
         self.board_state = self.board_state_stack.pop().unwrap();
-        
+
         #[cfg(debug_assertions)]
         self.assert_material_consistent();
     }
@@ -146,5 +154,42 @@ impl Board {
             self.board_state.material,
             "material cache desynced"
         );
+    }
+
+    pub fn refresh_piece_threats(&mut self) {
+        let stm = self.side_to_move();
+        let occ = self.occupancies();
+
+        for color in Color::ALL {
+            let occ_missing_their_king = occ ^ self.colored_pieces(!color, PieceType::King);
+            for piece_type in PieceType::ALL {
+                let get_attack: fn(Square, Bitboard) -> Bitboard = match piece_type {
+                    PieceType::Pawn => {
+                        if color == Color::White {
+                            |sq, _occ| get_pawn_attacks(sq, Color::White)
+                        } else {
+                            |sq, _occ| get_pawn_attacks(sq, Color::Black)
+                        }
+                    }
+                    PieceType::Knight => |sq, _occ| get_knight_attacks(sq),
+                    PieceType::King => |sq, _occ| get_king_attacks(sq),
+                    PieceType::Bishop => get_bishop_attacks,
+                    PieceType::Rook => get_rook_attacks,
+                    PieceType::Queen => get_queen_attacks,
+                    PieceType::None => unreachable!(),
+                };
+                let mut attacked = Bitboard(0);
+
+                for sq in self.colored_pieces(color, piece_type) {
+                    attacked |= get_attack(sq, occ_missing_their_king);
+                }
+
+                if color != stm {
+                    self.board_state.all_threats |= attacked;
+                }
+
+                self.board_state.piece_threats[Piece::new(color, piece_type)] = attacked;
+            }
+        }
     }
 }

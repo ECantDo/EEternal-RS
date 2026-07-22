@@ -26,6 +26,12 @@ struct BoardState {
     half_move_clock: u8, // For the 50 move rule
     hash_keys: HashKeys,
     material: i32,
+
+    checkers: Bitboard,
+    pinned: [Bitboard; Color::NUM],
+    pinners: [Bitboard; Color::NUM],
+    piece_threats: [Bitboard; Piece::NUM],
+    all_threats: Bitboard,
 }
 
 #[derive(Clone)]

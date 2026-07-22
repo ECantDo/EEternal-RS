@@ -1,10 +1,8 @@
+use crate::types::color::Color;
 use std::{
     fmt::Display,
     ops::{Index, IndexMut},
 };
-
-use crate::types::color::Color;
-
 // =================================================================================================
 // Declare types
 // =================================================================================================
@@ -73,25 +71,8 @@ impl Piece {
         unsafe { std::mem::transmute(self as u8 & 1) }
     }
 
-    // pub const fn value(self) -> i32 {
-    //     self.piece_type().value()
-    // }
-    pub const fn value(self) -> i32 { // Todo: Swap with raw value, not side
-        match self {
-            Self::WhitePawn => 100,
-            Self::WhiteKnight => 300,
-            Self::WhiteBishop => 400,
-            Self::WhiteRook => 600,
-            Self::WhiteQueen => 1100,
-            Self::WhiteKing => 0,
-            Self::BlackPawn => -100,
-            Self::BlackKnight => -300,
-            Self::BlackBishop => -400,
-            Self::BlackRook => -600,
-            Self::BlackQueen => -1100,
-            Self::BlackKing => 0,
-            Self::None => 0,
-        }
+    pub const fn value(self) -> i32 {
+        self.piece_type().value()
     }
 
     pub const fn from_index(i: usize) -> Self {
@@ -156,6 +137,15 @@ impl<T> IndexMut<Piece> for [T] {
 // =================================================================================================
 impl PieceType {
     pub const NUM: usize = 6;
+
+    pub const ALL: [PieceType; Self::NUM] = [
+        PieceType::Pawn,
+        PieceType::Knight,
+        PieceType::Bishop,
+        PieceType::Rook,
+        PieceType::Queen,
+        PieceType::King,
+    ];
 
     pub const fn new(value: usize) -> Self {
         debug_assert!(value < Self::NUM);
