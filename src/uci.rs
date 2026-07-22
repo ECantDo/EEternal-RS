@@ -225,26 +225,6 @@ fn handle_setoption(rest: &str) {
     let name = after_name[..value_idx].trim();
     let value = after_name[value_idx + " value ".len()..].trim();
 
-    // if name.eq_ignore_ascii_case("EvalFile") {
-    //     match crate::nnue::init_from_file(value) {
-    //         Ok(()) => println!("info string Loaded NNUE network from {value}"),
-    //         Err(e) => eprintln!("info string {e}"),
-    //     }
-    // }
-}
-
-fn handle_setoption(rest: &str) {
-    let Some(after_name) = rest.strip_prefix("name ") else {
-        return;
-    };
-
-    let Some(value_idx) = after_name.find(" value ") else {
-        return;
-    };
-
-    let name = after_name[..value_idx].trim();
-    let value = after_name[value_idx + " value ".len()..].trim();
-
     if name.eq_ignore_ascii_case("EvalFile") {
         match crate::nnue::init_from_file(value) {
             Ok(()) => println!("info string Loaded NNUE network from {value}"),

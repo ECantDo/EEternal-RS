@@ -59,9 +59,11 @@ pub fn start_search(search_data: &mut SearchData) -> Move {
         let mut idx = 0;
         for move_entry in &moves {
             let mv = move_entry.mv();
+            search_data.nnue.push(mv, &search_data.board);
             search_data.board.make_move(mv);
             let score = -search::<Root>(search_data, -beta, -alpha, (root_depth - 1) as i32, 1);
             search_data.board.undo_move(mv);
+            search_data.nnue.pop();
 
             if score.abs() >= Score::NONE {
                 println!("{}", search_data.to_uci_info());
@@ -181,6 +183,7 @@ fn search<Node: NodeType>(
 
     for move_entry in ordered_moves {
         let mv = move_entry.mv();
+        search_data.nnue.push(mv, &search_data.board);
         search_data.board.make_move(mv);
         let score = -search::<NonPV>(search_data, -beta, -alpha, depth - 1, ply + 1);
         search_data.board.undo_move(mv);
