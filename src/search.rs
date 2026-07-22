@@ -48,6 +48,7 @@ pub fn start_search(search_data: &mut SearchData) -> Move {
     };
 
     search_data.shared_data.tt.new_search();
+    search_data.nnue.reset(&search_data.board);
 
     search_data.root_move.mv = moves.get(0).mv();
 
