@@ -152,6 +152,8 @@ impl SearchData {
 
         uci_out += format!("nps {} ", nps).as_str();
 
+        uci_out += format!("hashfull {} ", self.shared_data.tt.hashfull()).as_str();
+
         uci_out
     }
 }
