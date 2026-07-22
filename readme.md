@@ -22,6 +22,7 @@ the engine back to where I left the C++ engine, then get to 3000+ ELO.
 | 0.0.2          | [NegaMax](https://www.chessprogramming.org/Negamax) with [Alpha-Beta](https://www.chessprogramming.org/Alpha-Beta) pruning, with a fixed search depth of 5. This bot played surprisingly well. <br> Evaluation is based purly on the material value of the position.                                                                                                                                                                                                                                                                                                                                                                                                               |
 | 0.0.3          | [Iterative Deepening](https://www.chessprogramming.org/Iterative_Deepening) with basic [Time Management](https://www.chessprogramming.org/Time_Management). Not much else to add here...                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
 | 0.0.4          | [Transposition Table](https://www.chessprogramming.org/Transposition_Table); The engine can store previous positions. <br> [Move Ordering](https://www.chessprogramming.org/Move_Ordering) + SEE; Since the engine had TTs, and that the move ordering sucked, adding a way to order the best move from the TT seemed like a good idea. <br> I decided to use SEE ([Static Exchange Evaluation](https://www.chessprogramming.org/Static_Exchange_Evaluation)) to help order moves. <br> While I was at it, I also added [Quiescence Search](https://www.chessprogramming.org/Quiescence_Search), since I am also wanting to add my NNUE, and Q Search was having issues by itself. |
+| 0.0.5          | It finally happend, I re-implemented my [NNUE](https://www.chessprogramming.org/NNUE) (Efficiently Updateable Neural Networks). Likely my biggest gain since version 0.0.2.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 
 ### UCI
 
@@ -62,12 +63,13 @@ of the Swiss and Knockout games played. The ELOs are based on the
 I have downloaded some bots in the surrounding area where my engine is roughly located,
 and played games against those bots.
 
-| Version Number | Approx ELO  | VS                                                          | VS Elo (Assumed) | WLD                            |
-|----------------|-------------|-------------------------------------------------------------|------------------|--------------------------------|
-| 0.0.4          | 1399 +/- 17 | DLComp2 (by: DawnLamp8), applemethod-orz (by: RedBlackTree) | 1387, 1085       | (526, 459, 15), (789, 94, 117) |
-| 0.0.3          | 1371 +/- 16 | applemethod-orz (by: RedBlackTree)                          | 1085             | Not Saved                      |
-| 0.0.2          | 1098 +/- 12 | Turochamp (Faithful) (by: P Rivero)                         | 1026             | Not Saved                      |
-| 0.0.1          | 1           | N/A                                                         | N/A              | N/A                            |
+| Version Number | Approx ELO  | VS                                                                                   | VS Elo (Assumed) | WLD                            |
+|----------------|-------------|--------------------------------------------------------------------------------------|------------------|--------------------------------|
+| 0.0.5          | 2393 +/- 20 | Game Tech Explained Bot (by: Game Tech Explained), TinyHugeBot (by: Popax21 & atpx8) | 1713, 2513       | (986, 6, 8), (222, 565, 212)   |
+| 0.0.4          | 1399 +/- 17 | DLComp2 (by: DawnLamp8), applemethod-orz (by: RedBlackTree)                          | 1387, 1085       | (526, 459, 15), (789, 94, 117) |
+| 0.0.3          | 1371 +/- 16 | applemethod-orz (by: RedBlackTree)                                                   | 1085             | Not Saved                      |
+| 0.0.2          | 1098 +/- 12 | Turochamp (Faithful) (by: P Rivero)                                                  | 1026             | Not Saved                      |
+| 0.0.1          | 1           | N/A                                                                                  | N/A              | N/A                            |
 
 ## Elo Calculation
 
