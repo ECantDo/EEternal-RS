@@ -1,5 +1,5 @@
 mod evaluate;
-mod generate_moves;
+pub mod generate_moves;
 mod make_move;
 pub mod parse;
 mod is_legal;

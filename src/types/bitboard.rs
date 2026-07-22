@@ -8,7 +8,7 @@ use super::{File, Rank};
 pub struct Bitboard(pub u64);
 
 impl Bitboard {
-    pub const ALL: Self = Self(0xFFFFFFFFFFFFFFFF);
+    pub const ALL: Self = Self(u64::MAX);
     pub const LIGHT_SQUARES: Self = Self(0x55AA55AA55AA55AA);
     pub const BOTH_HOME_ROWS: Self = Self(0xFF000000000000FF);
     pub const SIXTH_RANK: [Self; 2] = [Self::rank(Rank::R6), Self::rank(Rank::R3)];
@@ -63,6 +63,10 @@ impl Bitboard {
 
     pub const fn contains(self, square: Square) -> bool {
         self.0 & (1 << square as u64) != 0
+    }
+
+    pub const fn is_multiple(self) -> bool {
+        self.0 & self.0.wrapping_sub(1) != 0
     }
 }
 

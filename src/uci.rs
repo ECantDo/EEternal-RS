@@ -1,3 +1,5 @@
+use crate::board::generate_moves::AllMoves;
+use crate::types::move_list::MoveEntry;
 use crate::{
     board::Board,
     search::{
@@ -6,7 +8,7 @@ use crate::{
     },
     time_manager::{Limits, TimeManager},
     types::{
-        {color::Color, moves::Move},
+        color::Color,
         {piece::PieceType, square::Square},
     },
 };
@@ -14,7 +16,6 @@ use std::{
     io::{self, BufRead, Write},
     sync::{atomic::Ordering, Arc},
 };
-use crate::types::move_list::MoveEntry;
 
 pub fn run_uci() {
     let stdin = io::stdin();
@@ -201,16 +202,13 @@ fn parse_uci_move(board: &mut Board, uci: &str) -> Option<MoveEntry> {
         _ => None,
     });
 
-    let legal = board.generate_all_legal_moves(false);
-    legal
-        .into_iter()
-        .find(|move_entry| {
-            move_entry.mv().from() == from
-                && move_entry.mv().to() == to
-                && (!move_entry.mv().is_promotion()
-                    || Some(move_entry.mv().promotion_piece_type()) == promo)
-        })
-        
+    let legal = board.generate_all_legal_moves::<AllMoves>();
+    legal.into_iter().find(|move_entry| {
+        move_entry.mv().from() == from
+            && move_entry.mv().to() == to
+            && (!move_entry.mv().is_promotion()
+                || Some(move_entry.mv().promotion_piece_type()) == promo)
+    })
 }
 
 fn handle_setoption(rest: &str) {

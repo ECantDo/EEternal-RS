@@ -7,6 +7,8 @@ use crate::{
     types::{moves::Move, score::Score, MAX_PLY},
 };
 use std::sync::atomic::Ordering;
+use crate::board::generate_moves::{AllMoves, CapturesOnly};
+use crate::types::move_list::MoveList;
 
 const DELTA_MARGIN: i32 = 200;
 
@@ -57,7 +59,12 @@ pub fn qsearch<NODE: NodeType>(
         return stand_pat;
     }
 
-    let mut move_list = search_data.board.generate_all_legal_moves(!in_check);
+    let mut move_list: MoveList = if in_check {
+        search_data.board.generate_all_legal_moves::<AllMoves>()
+    } else {
+        search_data.board.generate_all_legal_moves::<CapturesOnly>()
+    };
+    
     let mut best_score: i32 = stand_pat;
     let mut ordered_moves = OrderedMoves::new(&mut move_list);
     ordered_moves.score_moves(search_data, Move::NONE);
