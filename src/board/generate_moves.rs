@@ -7,11 +7,7 @@ use crate::{
         get_queen_attacks, get_rook_attacks,
     },
     types::{
-        bitboard::Bitboard,
-        color::Color,
-        move_list::MoveList,
-        moves::MoveFlag,
-        piece::PieceType,
+        bitboard::Bitboard, color::Color, move_list::MoveList, moves::MoveFlag, piece::PieceType,
         square::Square,
     },
 };
@@ -86,37 +82,12 @@ impl super::Board {
     pub fn generate_all_legal_moves(&mut self, captures_only: bool) -> MoveList {
         let mut ml = self.generate_all_pseudolegal_moves(captures_only);
 
-        let stm = self.side_to_move();
-        let king_sq = self.king_square(stm);
-        let we_are_in_check = self.is_square_attacked(king_sq, !stm);
-
-        let pinned = if we_are_in_check {
-            Bitboard(0)
-        } else {
-            self.compute_pinned_pieces(stm, king_sq)
-        };
-
         let mut idx = 0;
         while idx < ml.len() {
-            let mv = ml.get(idx).mv();
-            let from = mv.from();
-            let is_en_passant = mv.is_en_passant();
-
-            let needs_verification =
-                from == king_sq || is_en_passant || we_are_in_check || pinned.contains(from);
-
-            if needs_verification {
-                self.make_move(mv);
-                let causes_check = self.is_square_attacked(self.king_square(stm), !stm);
-                self.undo_move(mv);
-
-                if causes_check {
-                    ml.remove(idx); // swap-remove — don't advance idx, recheck what got swapped in
-                } else {
-                    idx += 1;
-                }
-            } else {
+            if self.is_legal(ml.get(idx).mv()) {
                 idx += 1;
+            } else {
+                ml.remove(idx);
             }
         }
 
@@ -322,6 +293,7 @@ impl super::Board {
                     .is_allowed(CastlingDirections::WhiteKingside)
                     && (Bitboard(0x60) & occ).is_empty()
                     && !self.is_square_attacked(Square::F1, Color::Black)
+                    && !self.is_square_attacked(Square::G1, Color::Black)
                 {
                     ml.push(Move::new(Square::E1, Square::G1, MoveFlag::CastleKingside));
                 }
@@ -331,6 +303,7 @@ impl super::Board {
                     .is_allowed(CastlingDirections::WhiteQueenside)
                     && (Bitboard(0x0E) & occ).is_empty()
                     && !self.is_square_attacked(Square::D1, Color::Black)
+                    && !self.is_square_attacked(Square::C1, Color::Black)
                 {
                     ml.push(Move::new(Square::E1, Square::C1, MoveFlag::CastleQueenside));
                 }
@@ -342,6 +315,7 @@ impl super::Board {
                     .is_allowed(CastlingDirections::BlackKingside)
                     && (Bitboard(0x6000000000000000) & occ).is_empty()
                     && !self.is_square_attacked(Square::F8, Color::White)
+                    && !self.is_square_attacked(Square::G8, Color::White)
                 {
                     ml.push(Move::new(Square::E8, Square::G8, MoveFlag::CastleKingside));
                 }
@@ -351,6 +325,8 @@ impl super::Board {
                     .is_allowed(CastlingDirections::BlackQueenside)
                     && (Bitboard(0x0E00000000000000) & occ).is_empty()
                     && !self.is_square_attacked(Square::D8, Color::White)
+                    && !self.is_square_attacked(Square::C8, Color::White)
+
                 {
                     ml.push(Move::new(Square::E8, Square::C8, MoveFlag::CastleQueenside));
                 }

@@ -14,6 +14,7 @@ use crate::{
         UP_DIR,
     },
 };
+use crate::rays::between;
 
 impl Board {
     pub fn make_move(&mut self, mv: Move) {
@@ -146,7 +147,7 @@ impl Board {
         ] {
             recomputed +=
                 self.colored_pieces(Color::White, pt).popcount() as i32 * PieceType::value(pt);
-            recomputed -=
+            recomputed +=
                 self.colored_pieces(Color::Black, pt).popcount() as i32 * PieceType::value(pt);
         }
         debug_assert_eq!(
@@ -183,6 +184,7 @@ impl Board {
                 let mut attacked = Bitboard(0);
 
                 for sq in self.colored_pieces(color, piece_type) {
+                    debug_assert!(sq != Square::None);
                     attacked |= get_attack(sq, occ_missing_their_king);
                 }
 
@@ -191,5 +193,55 @@ impl Board {
                 self.board_state.piece_threats[color][piece_type] = attacked;
             }
         }
+
+        self.update_check_info();
+    }
+
+    pub fn update_check_info(&mut self) {
+        let stm = self.side_to_move();
+
+        self.board_state.checkers = Bitboard(0);
+        self.board_state.pinned = [Bitboard(0); Color::NUM];
+        self.board_state.pinners = [Bitboard(0); Color::NUM];
+
+        for color in [Color::White, Color::Black] {
+            let king = self.king_square(color);
+            let enemy = !color;
+
+            // "See through" own-color pieces: attacks computed with only enemy
+            // pieces as occupancy find every slider that *could* be pinning or
+            // checking, before we know how many of our own pieces sit in the way.
+            let diagonal = get_bishop_attacks(king, self.get_color(enemy))
+                & (self.colored_pieces(enemy, PieceType::Bishop) | self.colored_pieces(enemy, PieceType::Queen));
+            let orthogonal = get_rook_attacks(king, self.get_color(enemy))
+                & (self.colored_pieces(enemy, PieceType::Rook) | self.colored_pieces(enemy, PieceType::Queen));
+
+            for candidate in diagonal | orthogonal {
+                let blockers = between(king, candidate) & self.get_color(color);
+                match blockers.popcount() {
+                    0 => {
+                        if color == stm {
+                            self.board_state.checkers.set(candidate);
+                        }
+                    }
+                    1 => {
+                        self.board_state.pinned[color] |= blockers;
+                        self.board_state.pinners[enemy].set(candidate);
+                    }
+                    _ => (),
+                }
+            }
+        }
+
+        // Non-slider checks against the side to move.
+        let king = self.king_square(stm);
+        self.board_state.checkers |=
+            (get_pawn_attacks(king, stm) & self.colored_pieces(!stm, PieceType::Pawn))
+                | (get_knight_attacks(king) & self.colored_pieces(!stm, PieceType::Knight));
+
+        // Exclude our own king from occupancy so sliding attacks correctly
+        // project through the square it's about to vacate.
+        // let occ_without_king = self.occupancies() ^ self.colored_pieces(stm, PieceType::King);
+        // self.board_state.all_threats = self.attacked_squares(!stm, occ_without_king);
     }
 }

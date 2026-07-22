@@ -2,6 +2,7 @@ mod evaluate;
 mod generate_moves;
 mod make_move;
 pub mod parse;
+mod is_legal;
 
 use crate::{
     attacking::{
@@ -56,6 +57,7 @@ impl Board {
     }
 
     pub fn king_square(&self, color: Color) -> Square {
+        debug_assert!(self.colored_pieces(color, PieceType::King).not_empty());
         self.colored_pieces(color, PieceType::King).lsb()
     }
 
@@ -210,6 +212,14 @@ impl Board {
 
     pub fn is_square_attacked(&self, square: Square, by: Color) -> bool {
         (self.board_state.threats_by[by] & square.to_bitboard()).not_empty()
+    }
+
+    pub fn checkers(&self) -> Bitboard {
+        self.board_state.checkers
+    }
+
+    pub fn pinned(&self, color: Color) -> Bitboard {
+        self.board_state.pinned[color]
     }
 }
 
