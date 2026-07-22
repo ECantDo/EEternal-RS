@@ -1,16 +1,3 @@
-// Architecture ported from Reckless: the accumulator lives on the search thread
-// (as a `Network`), not on `Board`. `push`/`pop` just record *what* is about to
-// change; the actual feature add/remove math only happens lazily inside
-// `evaluate()`, which walks back to the last accurate ply on the stack and
-// replays deltas forward. Internal search nodes that never call `evaluate()`
-// (i.e. every non-leaf node) pay zero NNUE cost.
-//
-// Topology is deliberately left as-is: single (768-128)x2-1 SCReLU net, no
-// king buckets, no threat inputs, no L2/L3. Because there are no buckets,
-// incremental replay is always valid - there's no "can't update, must refresh"
-// case the way Reckless needs for king-bucket crossings.
-
-use std::mem::transmute;
 use std::sync::{Arc, RwLock};
 
 use crate::{
@@ -30,8 +17,6 @@ pub const QA: i32 = 255; // don't go above 255 (i16 squared must stay < 32768 he
 pub const QB: i32 = 64;
 pub const SCALE: i32 = 400;
 
-const _: () = assert!(HIDDEN_SIZE % 16 == 0);
-
 // =====================================================================================================================
 // Network parameters (weights/biases) - global, reference-counted, swappable at runtime
 // =====================================================================================================================
@@ -44,11 +29,11 @@ i16, no gaps) - required for `embedded()`'s `transmute` below to be valid. */
 #[repr(align(64))]
 pub struct NNUEParams {
     // input x hidden
-    input_weights: [[i16; HIDDEN_SIZE]; INPUT_SIZE],
-    input_biases: [i16; HIDDEN_SIZE],
+    pub input_weights: [[i16; HIDDEN_SIZE]; INPUT_SIZE],
+    pub input_biases: [i16; HIDDEN_SIZE],
     // 2 perspectives
-    output_weights: [i16; HIDDEN_SIZE * 2],
-    output_bias: i16,
+    pub output_weights: [i16; HIDDEN_SIZE * 2],
+    pub output_bias: i16,
 }
 
 /// Place a trained network at this path (relative to this file) and add
@@ -58,7 +43,10 @@ pub struct NNUEParams {
 const EXPECTED: usize = std::mem::size_of::<NNUEParams>();
 #[cfg(feature = "embed-nnue")]
 
-const ACTUAL: usize = include_bytes!("nnue/768-128x2-1.bin").len();
+const NNUE_BYTES: &[u8] = include_bytes!("nnue/768-128x2-1.bin");
+
+const ACTUAL: usize = NNUE_BYTES.len();
+
 #[cfg(feature = "embed-nnue")]
 
 const _: [(); EXPECTED] = [(); ACTUAL];
@@ -71,78 +59,16 @@ impl NNUEParams {
     /// little-endian build target, same as the old C++
     /// `loadFromPtr`/`memcpy` did implicitly.
     #[cfg(feature = "embed-nnue")]
-    fn embedded() -> &'static Self {
-        static EMBEDDED: NNUEParams =
-            unsafe { transmute(*include_bytes!("nnue/768-128x2-1.bin")) };
-        &EMBEDDED
-    }
-}
-
-static NNUE_PARAMS: RwLock<Option<Arc<NNUEParams>>> = RwLock::new(None);
-
-fn current_params() -> Option<Arc<NNUEParams>> {
-    NNUE_PARAMS.read().unwrap().clone()
-}
-
-/// Whether a network is currently loaded globally. Individual `Network`
-/// instances snapshot this at construction/reset time (see `Network::new`),
-/// so this is mainly useful for startup logging.
-pub fn is_loaded() -> bool {
-    NNUE_PARAMS.read().unwrap().is_some()
-}
-
-/// Copies a raw network file straight into a fresh `NNUEParams`, same layout
-/// `embedded()` and the old C++ `loadFromPtr` both assume (inputWeights, then
-/// inputBiases, then outputWeights, then outputBias, `#[repr(C)]`,
-/// little-endian). Bounds-checked up front, unlike the original `memcpy`
-/// chain, but otherwise a straight byte copy - no per-element parsing loop.
-fn load_from_bytes(bytes: &[u8]) -> Result<(), String> {
-    let expected_len = std::mem::size_of::<NNUEParams>();
-    if bytes.len() != expected_len {
-        return Err(format!(
-            "NNUE file wrong size: got {} bytes, expected exactly {expected_len}",
-            bytes.len()
-        ));
-    }
-
-    // SAFETY: `NNUEParams` is `#[repr(C)]` and made up entirely of `i16`
-    // arrays (no padding, no niches), so overwriting a zeroed instance with
-    // exactly `size_of::<NNUEParams>()` bytes is well-defined.
-    let mut params: Box<NNUEParams> = Box::new(unsafe { std::mem::zeroed() });
-    unsafe {
-        std::ptr::copy_nonoverlapping(
-            bytes.as_ptr(),
-            params.as_mut() as *mut NNUEParams as *mut u8,
-            expected_len,
+    pub fn load_embedded() -> Self {
+        assert_eq!(
+            NNUE_BYTES.len(),
+            size_of::<NNUEParams>(),
+            "embedded NNUE file size doesn't match NNUEParams layout"
         );
+        // read_unaligned: include_bytes! doesn't guarantee i16 alignment,
+        // this avoids UB from reading through a misaligned pointer.
+        unsafe { std::ptr::read_unaligned(NNUE_BYTES.as_ptr() as *const NNUEParams) }
     }
-
-    *NNUE_PARAMS.write().unwrap() = Some(Arc::from(params));
-    Ok(())
-}
-
-/// Mirrors `initNNUEEmbedded()` - loads whatever network was baked in at compile
-/// time via the `embed-nnue` feature. Returns false (and loads nothing) if that
-/// feature isn't enabled, same as "no embedded network found".
-pub fn try_init_embedded() -> bool {
-    #[cfg(feature = "embed-nnue")]
-    {
-        *NNUE_PARAMS.write().unwrap() = Some(Arc::new(NNUEParams::embedded().clone()));
-        true
-    }
-    #[cfg(not(feature = "embed-nnue"))]
-    {
-        false
-    }
-}
-
-/// Mirrors `initNNUE(filename)` - loads a network from disk at runtime,
-/// e.g. via `setoption name EvalFile value <path>`. Every `Network` created
-/// after this call (i.e. every subsequent search) will pick it up.
-pub fn init_from_file(path: &str) -> Result<(), String> {
-    let bytes =
-        std::fs::read(path).map_err(|e| format!("Failed to open NNUE file '{path}': {e}"))?;
-    load_from_bytes(&bytes)
 }
 
 // =====================================================================================================================
@@ -150,8 +76,8 @@ pub fn init_from_file(path: &str) -> Result<(), String> {
 // =====================================================================================================================
 
 #[derive(Clone, Copy)]
-#[repr(align(64))]
-struct Accumulator {
+#[repr(align(64), C)]
+pub struct Accumulator {
     white: [i16; HIDDEN_SIZE],
     black: [i16; HIDDEN_SIZE],
 }
@@ -165,12 +91,107 @@ impl Default for Accumulator {
     }
 }
 
-/// Piece(0..11 via color/piece_type) x 64 squares:
-/// White{Pawn..King} = 0..5, Black{Pawn..King} = 6..11.
+impl Accumulator {
+    pub fn from_biases(params: &NNUEParams) -> Self {
+        Self { white: params.input_biases, black: params.input_biases }
+    }
+
+    /// Full rebuild from scratch. Call when the position changes by any
+    /// means other than search's own make/undo (e.g. UCI `position`).
+    pub fn reset(&mut self, board: &Board, params: &NNUEParams) {
+        *self = Self::from_biases(params);
+        for sq in 0..64u8 {
+            let square = Square::new(sq);
+            let piece = board.get_piece_on_square(square);
+            if piece != Piece::None {
+                add_at(self, params, piece, square);
+            }
+        }
+    }
+}
+
 fn feature_index(piece: Piece, square: Square) -> usize {
     let piece_type_idx = piece.piece_type() as usize;
     let color_idx = piece.color() as usize;
     (color_idx * PieceType::NUM + piece_type_idx) * 64 + square as usize
+}
+
+fn mirrored_index(piece: Piece, square: Square) -> usize {
+    let mirrored_piece = Piece::new(!piece.color(), piece.piece_type());
+    feature_index(mirrored_piece, square.flip_rank())
+}
+
+fn add_at(acc: &mut Accumulator, params: &NNUEParams, piece: Piece, square: Square) {
+    forward::add_feature(acc, params, piece, square);
+}
+
+fn remove_at(acc: &mut Accumulator, params: &NNUEParams, piece: Piece, square: Square) {
+    forward::remove_feature(acc, params, piece, square);
+}
+
+
+/// The feature changes for `mv`, given `board` in its PRE-move state.
+/// Applying these as-is performs the "make" update; applying them with
+/// polarity flipped performs "undo" — valid because `board.undo_move`
+/// restores this exact pre-move state, so calling this again afterward
+/// yields the identical list.
+fn move_feature_ops(mv: Move, board: &Board) -> [Option<(Piece, Square, bool)>; 4] {
+    let mut ops: [Option<(Piece, Square, bool)>; 4] = [None; 4];
+    let mut n = 0;
+    let mut push = |piece: Piece, square: Square, is_add: bool| {
+        ops[n] = Some((piece, square, is_add));
+        n += 1;
+    };
+
+    let from = mv.from();
+    let to = mv.to();
+    let stm = board.side_to_move();
+    let moving_piece = board.get_piece_on_square(from);
+
+    push(moving_piece, from, false); // always leaves `from`
+
+    if mv.is_castling() {
+        let (rook_from, rook_to) = castling_rook_squares(stm, mv.flag());
+        let rook = board.get_piece_on_square(rook_from);
+        push(moving_piece, to, true);
+        push(rook, rook_from, false);
+        push(rook, rook_to, true);
+    } else if mv.is_en_passant() {
+        push(moving_piece, to, true);
+        let cap_sq = to.shift(-UP_DIR[stm]);
+        let captured = board.get_piece_on_square(cap_sq);
+        push(captured, cap_sq, false);
+    } else {
+        if mv.is_capture() {
+            let captured = board.get_piece_on_square(to);
+            push(captured, to, false);
+        }
+        if mv.is_promotion() {
+            push(Piece::new(stm, mv.promotion_piece_type()), to, true);
+        } else {
+            push(moving_piece, to, true);
+        }
+    }
+
+    ops
+}
+
+/// Call with `board` in its PRE-move state, before `board.make_move(mv)`.
+pub fn apply_move(acc: &mut Accumulator, params: &NNUEParams, mv: Move, board: &Board) {
+    for (piece, square, is_add) in move_feature_ops(mv, board).into_iter().flatten() {
+        if is_add { add_at(acc, params, piece, square); } else { remove_at(acc, params, piece, square); }
+    }
+}
+
+/// Call with `board` back in its PRE-move state, after `board.undo_move(mv)`.
+pub fn undo_move(acc: &mut Accumulator, params: &NNUEParams, mv: Move, board: &Board) {
+    for (piece, square, is_add) in move_feature_ops(mv, board).into_iter().flatten() {
+        if is_add { remove_at(acc, params, piece, square); } else { add_at(acc, params, piece, square); } // flipped
+    }
+}
+
+pub fn evaluate(acc: &Accumulator, board: &Board, params: &NNUEParams) -> i32 {
+    forward::output(acc, board.side_to_move(), params)
 }
 
 /// Feature add/remove and the output dot-product, with an AVX2 backend
@@ -392,197 +413,5 @@ mod forward {
 
             output
         }
-    }
-}
-
-// =====================================================================================================================
-// Lazy per-ply stack
-// =====================================================================================================================
-
-/// Everything needed to replay one ply's worth of feature changes without
-/// looking at the board: which move was played, what piece made it, and what
-/// (if anything) it captured - captured purely from move state, mirroring
-/// exactly what `Board::make_move` itself branches on.
-#[derive(Clone, Copy, Default)]
-struct MoveDelta {
-    mv: Move,
-    piece: Piece,
-    captured: Piece,
-}
-
-#[derive(Clone, Copy, Default)]
-struct StackEntry {
-    accumulator: Accumulator,
-    accurate: bool,
-    delta: MoveDelta,
-}
-
-/// Owned by the search thread (put this on `SearchData`/`ThreadData`, not on
-/// `Board`). `push`/`pop` are cheap - O(1), no accumulator math - and are
-/// meant to be called in lockstep with `Board::make_move`/`undo_move`.
-/// `evaluate()` is the only place accumulator work actually happens, and even
-/// then only for the plies since the last accurate one.
-pub struct NNUE {
-    parameters: Option<Arc<NNUEParams>>,
-    stack: Box<[StackEntry]>,
-    index: usize,
-}
-
-impl NNUE {
-    /// Snapshots whatever network is currently loaded globally. Construct a
-    /// fresh `Network` (or call `reset`) after loading a different network to
-    /// pick it up.
-    pub fn new() -> Self {
-        Self {
-            parameters: current_params(),
-            stack: vec![StackEntry::default(); MAX_PLY + 1].into_boxed_slice(),
-            index: 0,
-        }
-    }
-
-    pub fn is_active(&self) -> bool {
-        self.parameters.is_some()
-    }
-
-    /// Resets the stack to a single, fully-refreshed root accumulator for
-    /// `board`. Call this whenever the position changes wholesale (new search,
-    /// `position` command, after loading a different network) rather than via
-    /// incremental moves.
-    pub fn reset(&mut self, board: &Board) {
-        self.index = 0;
-        self.full_refresh(board);
-    }
-
-    /// Re-fetches the globally loaded network (e.g. after `setoption EvalFile`)
-    /// and rebuilds the accumulator for `board` from scratch.
-    pub fn reload(&mut self, board: &Board) {
-        self.parameters = current_params();
-        self.reset(board);
-    }
-
-    fn full_refresh(&mut self, board: &Board) {
-        let Some(params) = self.parameters.clone() else {
-            self.stack[self.index].accurate = true;
-            return;
-        };
-
-        let mut acc = Accumulator {
-            white: params.input_biases,
-            black: params.input_biases,
-        };
-
-        for i in 0..Square::NUM as u8 {
-            let square = Square::new(i);
-            let piece = board.get_piece_on_square(square);
-            if piece != Piece::None {
-                forward::add_feature(&mut acc, &params, piece, square);
-            }
-        }
-
-        self.stack[self.index].accumulator = acc;
-        self.stack[self.index].accurate = true;
-    }
-
-    /// Records that `mv` is about to be played. Must be called with `board` in
-    /// its *pre-move* state, immediately before `board.make_move(mv)`. Does no
-    /// accumulator work - just stashes what's needed to replay it later.
-    pub fn push(&mut self, mv: Move, board: &Board) {
-        self.index += 1;
-        debug_assert!(
-            self.index < self.stack.len(),
-            "NNUE accumulator stack overflow"
-        );
-
-        let entry = &mut self.stack[self.index];
-        entry.accurate = false;
-        entry.delta = MoveDelta {
-            mv,
-            piece: board.get_piece_on_square(mv.from()),
-            captured: board.get_piece_on_square(mv.to()),
-        };
-    }
-
-    /// Undoes the last `push`. Pair with `board.undo_move(mv)`.
-    pub fn pop(&mut self) {
-        debug_assert!(self.index > 0);
-        self.index -= 1;
-    }
-
-    /// Brings the accumulator at the current ply up to date (if needed) and
-    /// evaluates the position. Side-to-move relative, same convention as
-    /// `Board::evaluate`.
-    pub fn evaluate(&mut self, board: &Board) -> i32 {
-        let Some(params) = self.parameters.clone() else {
-            return 0;
-        };
-
-        self.ensure_accurate(&params);
-
-        let acc = &self.stack[self.index].accumulator;
-        forward::output(acc, board.side_to_move(), &params)
-    }
-
-    fn ensure_accurate(&mut self, params: &Arc<NNUEParams>) {
-        if self.stack[self.index].accurate {
-            return;
-        }
-
-        let mut last_accurate = self.index;
-        while !self.stack[last_accurate].accurate {
-            debug_assert!(last_accurate > 0, "no accurate accumulator found on stack");
-            last_accurate -= 1;
-        }
-
-        for i in (last_accurate + 1)..=self.index {
-            let mut acc = self.stack[i - 1].accumulator;
-            let delta = self.stack[i].delta;
-            Self::apply_delta(&mut acc, params, delta);
-            self.stack[i].accumulator = acc;
-            self.stack[i].accurate = true;
-        }
-    }
-
-    /// Replays one ply's feature changes, branching on move type exactly the
-    /// way `Board::make_move` does - just toggling accumulator features
-    /// instead of bitboards.
-    fn apply_delta(acc: &mut Accumulator, params: &NNUEParams, delta: MoveDelta) {
-        let mv = delta.mv;
-        let piece = delta.piece;
-        let from = mv.from();
-        let to = mv.to();
-        let stm = piece.color();
-
-        if mv.is_castling() {
-            let (rook_from, rook_to) = castling_rook_squares(stm, mv.flag());
-            forward::remove_feature(acc, params, piece, from);
-            forward::add_feature(acc, params, piece, to);
-            let rook = Piece::new(stm, PieceType::Rook);
-            forward::remove_feature(acc, params, rook, rook_from);
-            forward::add_feature(acc, params, rook, rook_to);
-        } else if mv.is_en_passant() {
-            forward::remove_feature(acc, params, piece, from);
-            forward::add_feature(acc, params, piece, to);
-            let cap_sq = to.shift(-UP_DIR[stm]);
-            let captured_pawn = Piece::new(!stm, PieceType::Pawn);
-            forward::remove_feature(acc, params, captured_pawn, cap_sq);
-        } else {
-            if mv.is_capture() {
-                forward::remove_feature(acc, params, delta.captured, to);
-            }
-            forward::remove_feature(acc, params, piece, from);
-
-            if mv.is_promotion() {
-                let promoted = Piece::new(stm, mv.promotion_piece_type());
-                forward::add_feature(acc, params, promoted, to);
-            } else {
-                forward::add_feature(acc, params, piece, to);
-            }
-        }
-    }
-}
-
-impl Default for NNUE {
-    fn default() -> Self {
-        Self::new()
     }
 }

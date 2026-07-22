@@ -43,7 +43,7 @@ pub fn qsearch<NODE: NodeType>(
     if in_check {
         stand_pat = Score::mated_in(ply);
     } else {
-        stand_pat = search_data.board.evaluate();
+        stand_pat = search_data.evaluate();
         if stand_pat >= beta {
             return stand_pat;
         }
@@ -53,11 +53,7 @@ pub fn qsearch<NODE: NodeType>(
     }
 
     if ply as usize >= MAX_PLY {
-        return if in_check {
-            search_data.board.evaluate()
-        } else {
-            stand_pat
-        };
+        return stand_pat;
     }
 
     let mut move_list = search_data.board.generate_all_legal_moves(!in_check);
@@ -82,10 +78,9 @@ pub fn qsearch<NODE: NodeType>(
                 continue;
             }
         }
-
-        search_data.board.make_move(mv);
+        search_data.make_move(mv);
         let score = -qsearch::<NonPV>(search_data, -beta, -alpha, ply + 1);
-        search_data.board.undo_move(mv);
+        search_data.undo_move(mv);
 
         if score.abs() >= Score::NONE {
             return score;

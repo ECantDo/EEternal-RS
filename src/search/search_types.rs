@@ -1,16 +1,8 @@
-use crate::nnue::NNUE;
-use crate::time_manager::Limits;
-use crate::{
-    board::Board,
-    time_manager::TimeManager,
-    types::{moves::Move, score::Score},
-};
-use std::sync::atomic::AtomicBool;
+use crate::{board::Board, nnue, nnue::{Accumulator, NNUEParams}, time_manager::Limits, time_manager::TimeManager, types::{moves::Move, score::Score, tt::TranspositionTable}};
 use std::sync::{
-    atomic::{AtomicU64, Ordering},
+    atomic::{AtomicU64, Ordering, AtomicBool},
     Arc,
 };
-use crate::types::tt::TranspositionTable;
 
 #[derive(Clone)]
 pub struct RootMove {
@@ -31,15 +23,16 @@ pub struct SharedData {
     // tt
     pub nodes: Counter,
     pub stop: AtomicBool,
-    pub tt: TranspositionTable
+    pub tt: TranspositionTable,
+    pub nnue_params: NNUEParams,
 }
 pub struct SearchData {
     pub board: Board,
     pub completed_depth: usize,
-    pub nnue: NNUE,
     pub root_move: RootMove,
     pub shared_data: Arc<SharedData>,
     pub time_manager: TimeManager,
+    pub nnue_accumulator: Accumulator,
 }
 
 pub struct Counter {
@@ -75,12 +68,12 @@ impl Default for Counter {
 impl SearchData {
     pub fn new(shared: Arc<SharedData>) -> Self {
         let board = Board::startpos();
-        let mut nnue = NNUE::new();
-        nnue.reset(&board);
+        let mut nnue_accumulator = Accumulator::from_biases(&shared.nnue_params);
+        nnue_accumulator.reset(&board, &shared.nnue_params);
         Self {
             board,
             completed_depth: 0,
-            nnue,
+            nnue_accumulator,
             root_move: RootMove::default(),
             shared_data: shared,
             time_manager: TimeManager::new(Limits::Infinite, 0, 0),
@@ -88,15 +81,23 @@ impl SearchData {
     }
 
     pub fn evaluate(&mut self) -> i32 {
-        if self.nnue.is_active() {
-            self.nnue.evaluate(&self.board)
-        } else {
-            self.board.evaluate()
-        }
+        crate::nnue::evaluate(&self.nnue_accumulator, &self.board, &self.shared_data.nnue_params)
     }
 
     pub fn set_board(&mut self, board: &Board) {
         self.board = board.clone();
+        self.nnue_accumulator.reset(&self.board, &self.shared_data.nnue_params);
+
+    }
+
+    pub fn make_move(&mut self, mv: Move) {
+        nnue::apply_move(&mut self.nnue_accumulator, &self.shared_data.nnue_params, mv, &self.board);
+        self.board.make_move(mv);
+    }
+
+    pub fn undo_move(&mut self, mv: Move) {
+        self.board.undo_move(mv);
+        nnue::undo_move(&mut self.nnue_accumulator, &self.shared_data.nnue_params, mv, &self.board);
     }
 
     pub fn nodes(&self) -> u64 {
@@ -151,7 +152,8 @@ impl SharedData {
         Self {
             nodes: Counter::default(),
             stop: AtomicBool::new(false),
-            tt: TranspositionTable::new(16)
+            tt: TranspositionTable::new(16),
+            nnue_params: NNUEParams::load_embedded(),
         }
     }
 }
