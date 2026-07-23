@@ -91,8 +91,9 @@ impl Board {
         self.half_move_number += 1;
 
         // Refresh threats when switching moves.
-        self.update_move_threat(mv);
-        // self.refresh_piece_threats();
+        // self.update_move_threat(mv); // The incremental is nice ; faster in perft, but ~400 k nps
+        // slower in search
+        self.refresh_piece_threats();
         #[cfg(debug_assertions)]
         {
             let mut shadow = self.clone();
