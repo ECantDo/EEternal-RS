@@ -1,5 +1,7 @@
 use crate::nnue::NNUE;
 use crate::time_manager::Limits;
+use crate::types::tt::TranspositionTable;
+use crate::types::MAX_PLY;
 use crate::{
     board::Board,
     time_manager::TimeManager,
@@ -7,10 +9,9 @@ use crate::{
 };
 use std::sync::atomic::AtomicBool;
 use std::sync::{
-    atomic::{AtomicU64, Ordering},
-    Arc,
+    atomic::{AtomicU64, Ordering}, Arc,
+    LazyLock,
 };
-use crate::types::tt::TranspositionTable;
 
 #[derive(Clone)]
 pub struct RootMove {
@@ -31,7 +32,7 @@ pub struct SharedData {
     // tt
     pub nodes: Counter,
     pub stop: AtomicBool,
-    pub tt: TranspositionTable
+    pub tt: TranspositionTable,
 }
 pub struct SearchData {
     pub board: Board,
@@ -95,12 +96,12 @@ impl SearchData {
         }
     }
 
-    pub fn make_move(&mut self, mv: Move){
+    pub fn make_move(&mut self, mv: Move) {
         self.nnue.push(mv, &self.board);
         self.board.make_move(mv);
     }
-    
-    pub fn undo_move(&mut self, mv: Move){
+
+    pub fn undo_move(&mut self, mv: Move) {
         self.board.undo_move(mv);
         self.nnue.pop();
     }
@@ -163,7 +164,16 @@ impl SharedData {
         Self {
             nodes: Counter::default(),
             stop: AtomicBool::new(false),
-            tt: TranspositionTable::new(16)
+            tt: TranspositionTable::new(16),
         }
     }
+}
+
+pub static LMR_TABLE: LazyLock<[[i32; MAX_PLY]; MAX_PLY]> = LazyLock::new(|| {
+    std::array::from_fn(|depth| {
+        std::array::from_fn(|moves| lmr_reduction(depth as i32, moves as i32))
+    })
+});
+fn lmr_reduction(depth: i32, moves_searched: i32) -> i32 {
+    (0.75 + (depth.max(1) as f64).ln() * (moves_searched.max(1) as f64).ln() / 2.5).max(0.0) as i32
 }

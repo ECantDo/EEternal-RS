@@ -1,11 +1,12 @@
+use crate::search::move_ordering::OrderedMoves;
 use crate::search::qsearch::qsearch;
+use crate::search::search_types::LMR_TABLE;
 use crate::{
     search::search_types::SearchData,
     time_manager::Limits,
     types::{moves::Move, score::Score, tt::Bound, MAX_PLY},
 };
 use std::sync::atomic::Ordering;
-use crate::search::move_ordering::OrderedMoves;
 
 mod move_ordering;
 pub mod qsearch;
@@ -176,6 +177,7 @@ fn search<Node: NodeType>(
     ordered_moves.score_moves(search_data, tt_probe.best_move);
 
     // ============ Search ============
+    let mut moves_searched: usize = 0;
     let mut best_score = -Score::INF;
     let mut best_move = tt_probe.best_move; // used for ordering later; fine as-is for now ; none by default
     let alpha_orig = alpha;
@@ -183,7 +185,22 @@ fn search<Node: NodeType>(
     for move_entry in ordered_moves {
         let mv = move_entry.mv();
         search_data.make_move(mv);
-        let score = -search::<NonPV>(search_data, -beta, -alpha, depth - 1, ply + 1);
+
+        let mut extensions: i32 = -1; // The natural `depth - 1` ... saves 1 CPU cycle
+        if search_data.board.in_check() {
+            extensions += 1; // Check extentions
+        }
+        if depth >= 2 && moves_searched >= 2 {
+            // search the first 3 moves in full, then LMR
+            extensions -= LMR_TABLE[depth as usize][moves_searched];
+        }
+
+        // ===================== SEARCH ====================
+        let mut score = -search::<NonPV>(search_data, -beta, -alpha, depth + extensions, ply + 1);
+
+        if extensions < -1 && score > alpha {
+            score = -search::<NonPV>(search_data, -beta, -alpha, depth - 1, ply + 1);
+        }
         search_data.undo_move(mv);
 
         if score.abs() >= Score::NONE {
@@ -202,6 +219,8 @@ fn search<Node: NodeType>(
         if alpha >= beta {
             break;
         }
+
+        moves_searched += 1;
     }
 
     // ============ TT Store ============

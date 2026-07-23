@@ -22,5 +22,7 @@ pub fn initialize() {
     } else {
         println!("info string No NNUE network found, using classical evaluation");
     }
-    uci::run_uci();
+    
+    // Init search stuff
+    search::search_types::LMR_TABLE[0][0];
 }
