@@ -72,7 +72,7 @@ impl Move {
         PieceType::new(((self.flag() as usize) & 3) + PieceType::Knight as usize)
     }
 
-    pub fn to_uci(self, board: &Board) -> String {
+    pub fn to_uci(self, _board: &Board) -> String {
         let mut output = format!("{}{}", self.from(), self.to());
 
         if self.is_promotion() {

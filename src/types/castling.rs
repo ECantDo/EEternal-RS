@@ -78,7 +78,7 @@ impl Castling {
         (self.raw & kind as u8) != 0
     }
 
-    pub fn to_string(self, board: &Board) -> String {
+    pub fn to_string(self, _board: &Board) -> String {
         if self.raw == 0 {
             return "-".to_string();
         }

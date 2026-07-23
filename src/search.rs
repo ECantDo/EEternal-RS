@@ -122,7 +122,7 @@ pub fn start_search(search_data: &mut SearchData) -> Move {
 fn search<Node: NodeType>(
     search_data: &mut SearchData,
     mut alpha: i32,
-    mut beta: i32,
+    beta: i32,
     depth: i32,
     ply: i32,
 ) -> i32 {

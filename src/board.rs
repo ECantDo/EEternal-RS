@@ -153,7 +153,7 @@ impl Board {
             return false;
         }
         let current: u64 = self.board_state.hash_keys.zobrist();
-        let mut count: i32 = 1;
+        // let mut count: i32 = 1;
         let lookback =
             (self.board_state.half_move_clock as usize).min(len - 1);
 

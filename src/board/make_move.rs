@@ -2,7 +2,6 @@ use crate::{
     board::Board,
     types::{
         castling::{castling_rook_squares, CASTLING_RIGHTS},
-        color::Color,
         moves::{Move, MoveFlag},
         piece::{Piece, PieceType},
         square::Square,
@@ -128,6 +127,7 @@ impl Board {
 
     #[cfg(debug_assertions)]
     fn assert_material_consistent(&self) {
+        use crate::types::color::Color;
         let mut recomputed = 0;
         for pt in [
             PieceType::Pawn,

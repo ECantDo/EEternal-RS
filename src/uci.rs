@@ -6,7 +6,7 @@ use crate::{
     },
     time_manager::{Limits, TimeManager},
     types::{
-        {color::Color, moves::Move},
+        {color::Color},
         {piece::PieceType, square::Square},
     },
 };

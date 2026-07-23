@@ -16,11 +16,11 @@ use crate::{
     },
 };
 
-#[derive(Copy, Clone, Eq, PartialEq)]
-pub enum MoveGenType {
-    Quiet,
-    Captures,
-}
+// #[derive(Copy, Clone, Eq, PartialEq)]
+// pub enum MoveGenType {
+//     Quiet,
+//     Captures,
+// }
 
 const PIN_DIRS: [i8; 8] = [8, -8, 1, -1, 9, 7, -7, -9];
 
@@ -121,21 +121,6 @@ impl super::Board {
         }
 
         ml
-    }
-
-    fn castling_passes_through_check(&self, mv: Move, stm: Color) -> bool {
-        let king_from = mv.from();
-        let king_to = mv.to();
-        let step = if king_to as u8 > king_from as u8 {
-            1
-        } else {
-            -1
-        };
-        let pass_through = king_from.shift(step); // the square between start and landing
-
-        self.is_square_attacked(king_from, !stm)
-            || self.is_square_attacked(pass_through, !stm)
-            || self.is_square_attacked(king_to, !stm)
     }
 
     pub fn generate_all_pseudolegal_moves(&self, captures_only: bool) -> MoveList {

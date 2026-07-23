@@ -1,4 +1,3 @@
-use crate::search::search_types::SearchData;
 use crate::types::color::Color;
 
 impl super::Board {
