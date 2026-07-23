@@ -1,4 +1,4 @@
-use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, Not};
+use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Not};
 
 use super::square::Square;
 use super::{File, Rank};

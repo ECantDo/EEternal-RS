@@ -92,12 +92,15 @@ impl Board {
 
         // Refresh threats when switching moves.
         self.update_move_threat(mv);
-
+        // self.refresh_piece_threats();
         #[cfg(debug_assertions)]
         {
             let mut shadow = self.clone();
             shadow.refresh_piece_threats();
-            debug_assert_eq!(shadow.board_state.piece_threats, self.board_state.piece_threats, "threats desync after {mv:?}");
+            debug_assert_eq!(
+                shadow.board_state.piece_threats, self.board_state.piece_threats,
+                "threats desync after {mv:?}"
+            );
             debug_assert_eq!(shadow.board_state.threats_by, self.board_state.threats_by);
             debug_assert_eq!(shadow.board_state.checkers, self.board_state.checkers);
             debug_assert_eq!(shadow.board_state.pinned, self.board_state.pinned);
@@ -137,17 +140,13 @@ impl Board {
         // The material doesn't need to be changed, it is saved on the stack
 
         self.board_state = self.board_state_stack.pop().unwrap();
-
-
     }
 
-    fn recompute_bucket(&mut self, color: Color, piece_type: PieceType) {
-        let occ_missing_their_king =
-            self.occupancies() ^ self.colored_pieces(!color, PieceType::King);
-        let attack_fn = attack_fn_for(color, piece_type); // your existing match, factored out
+    fn recompute_bucket(&mut self, color: Color, piece_type: PieceType, occ: Bitboard) {
+        let attack_fn = attack_fn_for(color, piece_type);
         let mut attacked = Bitboard(0);
         for sq in self.colored_pieces(color, piece_type) {
-            attacked |= attack_fn(sq, occ_missing_their_king);
+            attacked |= attack_fn(sq, occ);
         }
         self.board_state.piece_threats[color][piece_type] = attacked;
     }
@@ -155,6 +154,10 @@ impl Board {
     pub fn update_move_threat(&mut self, mv: Move) {
         debug_assert!(mv != Move::NONE);
         let occ = self.occupancies();
+        let king_occ: [Bitboard; Color::NUM] = [
+            occ ^ self.colored_pieces(Color::Black, PieceType::King),
+            occ ^ self.colored_pieces(Color::White, PieceType::King),
+        ];
 
         let mut affected_squares: [Square; 4] = [mv.from(), mv.to(), Square::None, Square::None];
 
@@ -163,7 +166,7 @@ impl Board {
         let mut mark = |this: &mut Self, color: Color, pt: PieceType| {
             if !updated[color][pt] {
                 updated[color][pt] = true;
-                this.recompute_bucket(color, pt);
+                this.recompute_bucket(color, pt, king_occ[color]);
             }
         };
 
@@ -212,20 +215,21 @@ impl Board {
             if sq == Square::None {
                 break;
             }
-            for color in Color::ALL {
-                let rooks_queens = self.colored_pieces(color, PieceType::Rook)
-                    | self.colored_pieces(color, PieceType::Queen);
-                let bishops_queens = self.colored_pieces(color, PieceType::Bishop)
-                    | self.colored_pieces(color, PieceType::Queen);
+            let rook_ray = get_rook_attacks(sq, occ);
+            let bishop_ray = get_bishop_attacks(sq, occ);
+            let mut hits = (rook_ray & (self.pieces(PieceType::Rook) | self.pieces(PieceType::Queen)))
+                | (bishop_ray & (self.pieces(PieceType::Bishop) | self.pieces(PieceType::Queen)));
 
-                let hits = (get_rook_attacks(sq, occ) & rooks_queens)
-                    | (get_bishop_attacks(sq, occ) & bishops_queens);
-
-                for hit_sq in hits {
-                    let piece = self.get_piece_on_square(hit_sq);
-                    mark(self, piece.color(), piece.piece_type());
-                }
+            while hits.not_empty() {
+                let hit_sq = hits.lsb();
+                let piece = self.get_piece_on_square(hit_sq);
+                hits &= !self.colored_pieces(piece.color(), piece.piece_type());
+                mark(self, piece.color(), piece.piece_type());
             }
+            // for hit_sq in hits {
+            //     let piece = self.get_piece_on_square(hit_sq);
+            //     mark(self, piece.color(), piece.piece_type());
+            // }
         }
 
         // Update the master threats
