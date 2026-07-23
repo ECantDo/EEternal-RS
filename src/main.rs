@@ -9,6 +9,5 @@ fn main() {
     println!("Not loading NNUE");
 
     eeternal_rs::initialize();
-    // eeternal_rs::utils::perft::perft_test();
     eeternal_rs::uci::run_uci();
 }
