@@ -8,5 +8,6 @@ fn main() {
     #[cfg(not(feature = "embed-nnue"))]
     println!("Not loading NNUE");
 
-    eeternal_rs::initialize();
+    // eeternal_rs::initialize();
+    eeternal_rs::utils::perft::perft_test();
 }
