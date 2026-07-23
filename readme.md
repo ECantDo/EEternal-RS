@@ -2,15 +2,14 @@
 
 ---
 
-A _mostly_ UCI-compatible chess engine, rewritten from my [C++
-implementation](https://github.com/ECantDo/EEternal-Chess); the engine can make reasonable moves, it does have a
+A _mostly_ UCI-compatible chess engine, rewritten from
+my [C++ implementation](https://github.com/ECantDo/EEternal-Chess); the engine can make reasonable moves, it does have a
 fixed search depth, and a terrible evaluation, but it is making decisions.
 
-The C++ implementation is roughly around 2900 ELO on a single thread, based
-on a private Swiss tournament, provided by Qiles Corey, from the
-[Stockfish Discord](https://discord.gg/GWDRS3kU6R) (roughly 360 engines played,
-some of the top engines were included). My current goal is to get
-the engine back to where I left the C++ engine, then get to 3000+ ELO.
+The C++ implementation is roughly around 2900 ELO on a single thread, based on a private Swiss tournament, provided by
+Qiles Corey, from the
+[Stockfish Discord](https://discord.gg/GWDRS3kU6R) (roughly 360 engines played, some of the top engines were included).
+My current goal is to get the engine back to where I left the C++ engine, then get to 3000+ ELO.
 
 ---
 
@@ -24,8 +23,9 @@ the engine back to where I left the C++ engine, then get to 3000+ ELO.
 | 0.0.4          | [Transposition Table](https://www.chessprogramming.org/Transposition_Table); The engine can store previous positions. <br> [Move Ordering](https://www.chessprogramming.org/Move_Ordering) + SEE; Since the engine had TTs, and that the move ordering sucked, adding a way to order the best move from the TT seemed like a good idea. <br> I decided to use SEE ([Static Exchange Evaluation](https://www.chessprogramming.org/Static_Exchange_Evaluation)) to help order moves. <br> While I was at it, I also added [Quiescence Search](https://www.chessprogramming.org/Quiescence_Search), since I am also wanting to add my NNUE, and Q Search was having issues by itself. |
 | 0.0.5          | It finally happend, I re-implemented my [NNUE](https://www.chessprogramming.org/NNUE) (Efficiently Updateable Neural Networks). Likely my biggest gain since version 0.0.2.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 | 0.0.6          | [Late Move Reductions](https://www.chessprogramming.org/Late_Move_Reductions) and [Check Extensions](https://www.chessprogramming.org/Check_Extensions). Both of wich change the search depth to expore more/less of the search tree based on how likely it is to be better or worse than what has already been explored.                                                                                                                                                                                                                                                                                                                                                          |
+| 0.0.7          | Major bug fix; was using the fullmove counter, as the half-move clock; so games lasting more than 50 full moves (or even just searching into 50 full moves) evaluated the board as a draw. Resulting in throwing A LOT of games.                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 
-\*_[See below](#approx-elo) for the ELO improvement_
+\* _[See below](#approx-elo) for the ELO improvement_
 
 ### UCI
 
@@ -48,10 +48,9 @@ The following UCI commands are implemented:
 
 ## Why the rewrite?
 
-The C++ version's multithreading was bolted on early without much thought
-and became painful to extend. This version aims to get the architecture
-right, from the start. ... Ok there was thought behind adding it, but this was
-my first proper chess engine, so I also didn't know what I was doing.
+The C++ version's multithreading was bolted on early without much thought and became painful to extend. This version
+aims to get the architecture right, from the start. ... Ok there was thought behind adding it, but this was my first
+proper chess engine, so I also didn't know what I was doing.
 
 ---
 
@@ -63,11 +62,12 @@ The ELO has been calculated based on engines that played in
 of the Swiss and Knockout games played. The ELOs are based on the
 [Boychesser](https://github.com/analog-hors/Boychesser) engine (ELO: 2772 +/- 11, at the time)
 
-Games are played with a time control of `10+0.1s`, and with an opening book of 8 moves,
-each engine gets the chance to play as both white and black, from the same position.
+Games are played with a time control of `10+0.1s`, and with an opening book of 8 moves, each engine gets the chance to
+play as both white and black, from the same position.
 
 | Version Number                                                          | Approx ELO      | VS                                                                                       | VS Elo (Assumed) | WLD                            |
 |-------------------------------------------------------------------------|-----------------|------------------------------------------------------------------------------------------|------------------|--------------------------------|
+| [0.0.7]()                                                               | **2631 +/- 15** | `EEternalRS_V0.0.6`                                                                      | 2468             | (481, 43, 476)                 |
 | [0.0.6](https://github.com/ECantDo/EEternal-RS/releases/tag/v0.0.6)     | **2468 +/- 11** | `EEternalRS_V0.0.5`                                                                      | 2393             | (255, 42, 702)                 |
 | [0.0.5](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.0.5)     | **2393 +/- 20** | `Game Tech Explained Bot` (by: Game Tech Explained), `TinyHugeBot` (by: Popax21 & atpx8) | 1713, 2513       | (986, 6, 8), (222, 565, 212)   |
 | [0.0.4](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.0.4)     | **1399 +/- 17** | `DLComp2` (by: DawnLamp8), `applemethod-orz` (by: RedBlackTree)                          | 1387, 1085       | (526, 459, 15), (789, 94, 117) |
@@ -79,10 +79,9 @@ each engine gets the chance to play as both white and black, from the same posit
 
 _As of V0.0.4_
 
-The ELO is calculated based on assuming that the *guessed* ELO ratings are the *true* ratings.
-That leads into the elo ratings are still approximate, but can still be wildly off. The more
-games that are played, the better approximation that we can get, relative to the assumed true
-ELO ratings of the played bots.
+The ELO is calculated based on assuming that the *guessed* ELO ratings are the *true* ratings. That leads into the elo
+ratings are still approximate, but can still be wildly off. The more games that are played, the better approximation
+that we can get, relative to the assumed true ELO ratings of the played bots.
 
 ```py
 import math
@@ -140,8 +139,7 @@ if __name__ == "__main__":
 #### DLComp2
 
 When running the games, I noticed a lot of games ending with illegal moves, basically all
-`a1a1` (moving the piece on a1 to a1). Based on the results of these games, I bet it's ELO
-rating would be much higher. It made 276 illegal moves, resulting in a loss, out of 1000 games.
-Assuming that issue doesn't exist, and giving `DLComp2` those additional games as wins (I don't
-know that the actual result would have been); `DLComp2` would be rated about 158 (+/- 24) ELO
-points higher than it currently is. But, I cannot assume and will just use the scores I have.
+`a1a1` (moving the piece on a1 to a1). Based on the results of these games, I bet it's ELO rating would be much higher.
+It made 276 illegal moves, resulting in a loss, out of 1000 games. Assuming that issue doesn't exist, and giving
+`DLComp2` those additional games as wins (I don't know that the actual result would have been); `DLComp2` would be rated
+about 158 (+/- 24) ELO points higher than it currently is. But, I cannot assume and will just use the scores I have.
