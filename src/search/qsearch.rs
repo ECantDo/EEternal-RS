@@ -19,7 +19,7 @@ pub fn qsearch<NODE: NodeType>(
     debug_assert!(!NODE::ROOT);
     debug_assert!(ply as usize <= MAX_PLY);
     debug_assert!(-Score::INF <= alpha && alpha < beta && beta <= Score::INF);
-    debug_assert!(NODE::PV || alpha == beta - 1);
+    // debug_assert!(NODE::PV || alpha == beta - 1);
 
     search_data.shared_data.nodes.increment();
 

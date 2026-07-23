@@ -37,7 +37,7 @@ pub struct Board {
     board_state: BoardState,
     board_state_stack: Vec<BoardState>,
 
-    half_move_number: usize, // & 1 to get turn
+    half_move_number: usize, // Number of moves in game;  & 1 to get turn
 }
 
 impl Board {
@@ -144,7 +144,7 @@ impl Board {
     }
 
     pub fn draw_by_fifty_moves(&self) -> bool {
-        self.half_move_number >= 100
+        self.board_state.half_move_clock >= 100
     }
 
     pub fn draw_by_repetition(&self) -> bool {

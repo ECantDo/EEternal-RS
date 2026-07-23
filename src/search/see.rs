@@ -100,9 +100,6 @@ impl Board {
         let mut occ = self.occupancies();
         occ.clear(from);
 
-        // En passant's captured pawn isn't on `to` — clear its actual square.
-        // (Your C++ `see()` doesn't special-case this; worth carrying over
-        // since we have `is_en_passant()` cheaply available.)
         if mv.is_en_passant() {
             let stm = self.side_to_move();
             let cap_sq = to.shift(-UP_DIR[stm]);
