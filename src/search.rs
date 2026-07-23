@@ -4,7 +4,7 @@ use crate::search::search_types::LMR_TABLE;
 use crate::{
     search::search_types::SearchData,
     time_manager::Limits,
-    types::{moves::Move, score::Score, tt::Bound, MAX_PLY},
+    types::{MAX_PLY, moves::Move, score::Score, tt::Bound},
 };
 use std::sync::atomic::Ordering;
 
@@ -38,10 +38,15 @@ impl NodeType for NonPV {
 
 pub fn start_search(search_data: &mut SearchData) -> Move {
     let mut moves = search_data.board.generate_all_legal_moves(false);
-    debug_assert!(
-        !moves.is_empty(),
-        "start_search called on a position with no legal moves"
-    );
+
+    if moves.is_empty() {
+        // Position is checkmate or stalemate — nothing to search.
+        let score = if search_data.board.in_check() { Score::mated_in(0) } else { 0 };
+        search_data.root_move.mv = Move::NONE;
+        search_data.root_move.score = score;
+        println!("{}", search_data.to_uci_info());
+        return Move::NONE;
+    }
 
     let max_depth = match search_data.time_manager.limits() {
         Limits::Depth(depth) => depth as usize,
@@ -152,6 +157,7 @@ fn search<Node: NodeType>(
         .shared_data
         .tt
         .probe(hash, depth, alpha, beta, ply);
+
     if let Some(score) = tt_probe.score {
         // Don't cut PV nodes short on a TT hit — we need to walk this line
         // ourselves to build an accurate principal variation, not just know
@@ -231,10 +237,14 @@ fn search<Node: NodeType>(
     } else {
         Bound::Exact
     };
-    search_data
-        .shared_data
-        .tt
-        .store(hash, best_move, depth, best_score, bound, ply);
+    search_data.shared_data.tt.store(
+        hash,
+        best_move,
+        depth,
+        best_score,
+        bound,
+        ply,
+    );
 
     best_score
 }

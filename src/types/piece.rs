@@ -157,6 +157,15 @@ impl<T> IndexMut<Piece> for [T] {
 impl PieceType {
     pub const NUM: usize = 6;
 
+    pub const ALL: [Self; Self::NUM] = [
+        PieceType::Pawn,
+        PieceType::Knight,
+        PieceType::Bishop,
+        PieceType::Rook,
+        PieceType::Queen,
+        PieceType::King,
+    ];
+
     pub const fn new(value: usize) -> Self {
         debug_assert!(value < Self::NUM);
         unsafe { std::mem::transmute(value as u8) }

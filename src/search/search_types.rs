@@ -89,6 +89,7 @@ impl SearchData {
     }
 
     pub fn evaluate(&mut self) -> i32 {
+        // return self.board.evaluate();
         if self.nnue.is_active() {
             self.nnue.evaluate(&self.board)
         } else {

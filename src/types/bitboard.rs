@@ -25,6 +25,7 @@ impl Bitboard {
         Self(0x0101010101010101u64 << (file as usize))
     }
 
+    /// Count all ones
     pub const fn popcount(self) -> usize {
         self.0.count_ones() as usize
     }

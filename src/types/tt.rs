@@ -187,6 +187,7 @@ impl TranspositionTable {
     }
 
     pub fn probe(&self, key: u64, depth: i32, alpha: i32, beta: i32, ply: i32) -> ProbeResult {
+        // return         ProbeResult { score: None, best_move: Move::NONE, depth: -1 };
         let cluster = &self.clusters[self.index(key)];
         let verify = Self::verification_key(key);
 
