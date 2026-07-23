@@ -58,6 +58,15 @@ pub fn qsearch<NODE: NodeType>(
     }
 
     let mut move_list = search_data.board.generate_all_legal_moves(!in_check);
+
+    if move_list.is_empty() {
+        // Draw/Mate check
+        if in_check {
+            return Score::mated_in(ply);
+        }
+        return stand_pat;
+    }
+
     let mut best_score: i32 = stand_pat;
     let mut ordered_moves = OrderedMoves::new(&mut move_list);
     ordered_moves.score_moves(search_data, Move::NONE);

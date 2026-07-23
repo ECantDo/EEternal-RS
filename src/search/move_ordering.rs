@@ -20,6 +20,7 @@ impl<'a> OrderedMoves<'a> {
         for idx in 0..self.move_list.len() {
             let mv = self.move_list.get(idx).mv();
             let score = if mv == tt_move {
+                debug_assert!(mv != Move::NONE);
                 i32::MAX
             } else if mv.is_capture() {
                 CAPTURE_VALUE + search_data.board.see(mv)
