@@ -56,6 +56,7 @@ pub fn start_search(search_data: &mut SearchData) -> Move {
     search_data.shared_data.tt.new_search();
     search_data.nnue.reset(&search_data.board);
 
+    // Just have A move ... just in case
     search_data.root_move.mv = moves.get(0).mv();
 
     for root_depth in 1..=max_depth {
@@ -185,7 +186,7 @@ fn search<Node: NodeType>(
     // ============ Search ============
     let mut moves_searched: usize = 0;
     let mut best_score = -Score::INF;
-    let mut best_move = tt_probe.best_move; // used for ordering later; fine as-is for now ; none by default
+    let mut best_move = Move::NONE; // Just keeping track, this isn't used later
     let alpha_orig = alpha;
 
     for move_entry in ordered_moves {
@@ -202,11 +203,25 @@ fn search<Node: NodeType>(
         }
 
         // ===================== SEARCH ====================
-        let mut score = -search::<NonPV>(search_data, -beta, -alpha, depth + extensions, ply + 1);
+        let mut score: i32;
+        if moves_searched == 0 {
+            // Assumed best move: give it a full search; there will never be an LMR here
+            score = -search::<PV>(search_data, -beta, -alpha, depth + extensions, ply + 1);
+        } else {
+            // Null-window search; just show move isn't better
+            score = -search::<NonPV>(search_data, -alpha - 1, -alpha, depth + extensions, ply + 1);
 
-        if extensions < -1 && score > alpha {
-            score = -search::<NonPV>(search_data, -beta, -alpha, depth - 1, ply + 1);
+            // LMR re-search at full depth is the reduced beat alpha
+            if extensions < -1 && score > alpha {
+                score = -search::<NonPV>(search_data, -alpha - 1, -alpha, depth - 1, ply + 1);
+            }
+
+            // PVS re-search at full window if this move raised alpha and we're on a PV node
+            if Node::PV && score > alpha {
+                score = -search::<PV>(search_data, -beta, -alpha, depth - 1, ply + 1);
+            }
         }
+
         search_data.undo_move(mv);
 
         if score.abs() >= Score::NONE {

@@ -65,15 +65,15 @@ of the Swiss and Knockout games played. The ELOs are based on the
 Games are played with a time control of `10+0.1s`, and with an opening book of 8 moves, each engine gets the chance to
 play as both white and black, from the same position.
 
-| Version Number                                                          | Approx ELO      | VS                                                                                       | VS Elo (Assumed) | WLD                            |
-|-------------------------------------------------------------------------|-----------------|------------------------------------------------------------------------------------------|------------------|--------------------------------|
-| [0.0.7]()                                                               | **2631 +/- 15** | `EEternalRS_V0.0.6`                                                                      | 2468             | (481, 43, 476)                 |
-| [0.0.6](https://github.com/ECantDo/EEternal-RS/releases/tag/v0.0.6)     | **2468 +/- 11** | `EEternalRS_V0.0.5`                                                                      | 2393             | (255, 42, 702)                 |
-| [0.0.5](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.0.5)     | **2393 +/- 20** | `Game Tech Explained Bot` (by: Game Tech Explained), `TinyHugeBot` (by: Popax21 & atpx8) | 1713, 2513       | (986, 6, 8), (222, 565, 212)   |
-| [0.0.4](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.0.4)     | **1399 +/- 17** | `DLComp2` (by: DawnLamp8), `applemethod-orz` (by: RedBlackTree)                          | 1387, 1085       | (526, 459, 15), (789, 94, 117) |
-| [0.0.3](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.0.3)     | **1371 +/- 16** | `applemethod-orz` (by: RedBlackTree)                                                     | 1085             | Not Saved                      |
-| [0.0.2](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.0.2)     | **1098 +/- 12** | `Turochamp` (Faithful) (by: P Rivero)                                                    | 1026             | Not Saved                      |
-| [0.0.1](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.0.1-RNG) | **1**           | N/A                                                                                      | N/A              | N/A                            |
+| Version Number                                                          | Approx ELO      | VS                                                                                         | VS Elo (Assumed) | WLD                             |
+|-------------------------------------------------------------------------|-----------------|--------------------------------------------------------------------------------------------|------------------|---------------------------------|
+| [0.0.7](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.0.7)     | **2607 +/- 10** | `EEternalRS_V0.0.6`, `drip leab` (by: JeffLegendPower, AtadOfAChad, Gonumen, KevinStriker) | 2468, 2602       | (481, 43, 476), (317, 318, 365) |
+| [0.0.6](https://github.com/ECantDo/EEternal-RS/releases/tag/v0.0.6)     | **2468 +/- 11** | `EEternalRS_V0.0.5`                                                                        | 2393             | (255, 42, 702)                  |
+| [0.0.5](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.0.5)     | **2393 +/- 20** | `Game Tech Explained Bot` (by: Game Tech Explained), `TinyHugeBot` (by: Popax21 & atpx8)   | 1713, 2513       | (986, 6, 8), (222, 565, 212)    |
+| [0.0.4](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.0.4)     | **1399 +/- 17** | `DLComp2` (by: DawnLamp8), `applemethod-orz` (by: RedBlackTree)                            | 1387, 1085       | (526, 459, 15), (789, 94, 117)  |
+| [0.0.3](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.0.3)     | **1371 +/- 16** | `applemethod-orz` (by: RedBlackTree)                                                       | 1085             | Not Saved                       |
+| [0.0.2](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.0.2)     | **1098 +/- 12** | `Turochamp` (Faithful) (by: P Rivero)                                                      | 1026             | Not Saved                       |
+| [0.0.1](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.0.1-RNG) | **1**           | N/A                                                                                        | N/A              | N/A                             |
 
 ## Elo Calculation
 
