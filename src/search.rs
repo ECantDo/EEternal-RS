@@ -88,6 +88,7 @@ pub fn start_search(search_data: &mut SearchData) -> Move {
         // as it will be very hard to find better (it might not be the fastest mate ... but still).
         // I want to implement a checkmate search at some point, so IF the score is Mate, switch to
         // that to try and find a faster mate.
+        // Also works for if there are no legal moves of quitting early.
         if root_depth <= 6 && search_data.root_move.score.abs() >= Score::MATE_IN_MAX {
             return search_data.root_move.mv;
         }
@@ -114,7 +115,7 @@ fn search<Node: NodeType>(
         return Score::NONE;
     }
 
-    if search_data.board.is_draw() {
+    if search_data.board.is_draw() && !Node::ROOT {
         return 0;
     }
 
@@ -164,39 +165,53 @@ fn search<Node: NodeType>(
         let mv = move_entry.mv();
         search_data.make_move(mv);
 
-        let mut extensions: i32 = -1; // The natural `depth - 1` ... saves 1 CPU cycle
+        let mut check_extensions: i32 = 0;
+        let mut lmr_reductions: i32 = 0;
         if search_data.board.in_check() {
-            extensions += 1; // Check extentions
-        }
-        if depth >= 2 && moves_searched >= 2 {
+            // TODO: try double check extension on PV node
+            check_extensions += 1; // Check extensions
+        } else if depth >= 2 && moves_searched >= 2 {
             // search the first 3 moves in full, then LMR
-            extensions -= LMR_TABLE[depth as usize][moves_searched];
+            // Only do LMR when not in check? (might be better)
+            lmr_reductions = LMR_TABLE[depth as usize][moves_searched];
         }
 
         // ===================== SEARCH ====================
+        let new_depth = depth + check_extensions - 1 - lmr_reductions;
         let mut score: i32;
-        if moves_searched == 0 {
+        if moves_searched == 0 && Node::PV {
+            // PV is true for Root
             // Assumed best move: give it a full search; there will never be an LMR here
             // (i.e. extensions will never be less than -1)
-            score = -search::<PV>(search_data, -beta, -alpha, depth + extensions, ply + 1);
+            score = -search::<PV>(search_data, -beta, -alpha, new_depth, ply + 1);
         } else {
             // Null-window search; just show move isn't better
-            score = -search::<NonPV>(search_data, -alpha - 1, -alpha, depth + extensions, ply + 1);
+            score = -search::<NonPV>(search_data, -alpha - 1, -alpha, new_depth, ply + 1);
 
             // LMR re-search at full depth is the reduced beat alpha
-            if extensions < -1 && score > alpha {
+            if lmr_reductions > 0 && score > alpha {
+                // If lmr > 0; we cannot be in check, so don't add in the check extension
                 score = -search::<NonPV>(search_data, -alpha - 1, -alpha, depth - 1, ply + 1);
             }
 
-            // PVS re-search at full window if this move raised alpha and we're on a PV node
+            // PVS re-search at full window if this move raised alpha, and we're on a PV node
             if Node::PV && score > alpha {
-                score = -search::<PV>(search_data, -beta, -alpha, depth - 1, ply + 1);
+                score = -search::<PV>(
+                    search_data,
+                    -beta,
+                    -alpha,
+                    depth - 1 + check_extensions,
+                    ply + 1,
+                );
             }
         }
 
         search_data.undo_move(mv);
 
         if score.abs() >= Score::NONE {
+            if Node::ROOT && search_data.root_move.mv == Move::NONE {
+                search_data.root_move.mv = mv;
+            }
             return score;
         }
 
