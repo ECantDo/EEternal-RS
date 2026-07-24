@@ -37,16 +37,20 @@ impl NodeType for NonPV {
 }
 
 pub fn start_search(search_data: &mut SearchData) -> Move {
-    let mut moves = search_data.board.generate_all_legal_moves(false);
-
-    if moves.is_empty() {
-        // Position is checkmate or stalemate — nothing to search.
-        let score = if search_data.board.in_check() { Score::mated_in(0) } else { 0 };
-        search_data.root_move.mv = Move::NONE;
-        search_data.root_move.score = score;
-        println!("{}", search_data.to_uci_info());
-        return Move::NONE;
-    }
+    // let moves = search_data.board.generate_all_legal_moves(false);
+    //
+    // if moves.is_empty() {
+    //     // Position is checkmate or stalemate — nothing to search.
+    //     let score = if search_data.board.in_check() {
+    //         Score::mated_in(0)
+    //     } else {
+    //         0
+    //     };
+    //     search_data.root_move.mv = Move::NONE;
+    //     search_data.root_move.score = score;
+    //     println!("{}", search_data.to_uci_info());
+    //     return Move::NONE;
+    // }
 
     let max_depth = match search_data.time_manager.limits() {
         Limits::Depth(depth) => depth as usize,
@@ -56,59 +60,18 @@ pub fn start_search(search_data: &mut SearchData) -> Move {
     search_data.shared_data.tt.new_search();
     search_data.nnue.reset(&search_data.board);
 
-    // Just have A move ... just in case
-    search_data.root_move.mv = moves.get(0).mv();
+    search_data.root_move.mv = Move::NONE; // moves.get(0).mv();
 
     for root_depth in 1..=max_depth {
-        let mut alpha = -Score::INF;
-        let beta = Score::INF;
-        let mut best_score = -Score::INF;
+        let score = search::<Root>(search_data, -Score::INF, Score::INF, root_depth as i32, 0);
 
-        let mut idx = 0;
-        for move_entry in &moves {
-            let mv = move_entry.mv();
-            search_data.make_move(mv);
-            let score = -search::<Root>(search_data, -beta, -alpha, (root_depth - 1) as i32, 1);
-            search_data.undo_move(mv);
-
-            if score.abs() >= Score::NONE {
-                println!("{}", search_data.to_uci_info());
-                return search_data.root_move.mv;
-            }
-
-            if score > best_score {
-                search_data.root_move.mv = mv;
-                search_data.root_move.score = score;
-                best_score = score;
-                // place best move first
-                // this is move ordering, but kinda bad move ordering...
-                moves.place_first(idx); // This is fine, I swear
-                // moves.swap(0, idx);
-            }
-            if score > alpha {
-                alpha = score;
-            }
-
-            // Hard Time limit
-            if search_data.time_manager.check_time(search_data)
-                || search_data.shared_data.stop.load(Ordering::Relaxed)
-            {
-                println!("{}", search_data.to_uci_info());
-                return search_data.root_move.mv; // The best move will either be the first one (still thinks is best), or a new one that is better
-            }
-            idx += 1
+        // A NONE-ish score means we bailed mid-search (time/stop). root_move
+        // already reflects the best move found before the cutoff, so just
+        // report it and go home.
+        if score.abs() >= Score::NONE || search_data.shared_data.stop.load(Ordering::Relaxed) {
+            println!("{}", search_data.to_uci_info());
+            return search_data.root_move.mv;
         }
-
-        // Store the root result too — future iterations (and any tool that
-        // probes the TT at the startpos) get the benefit of this depth.
-        search_data.shared_data.tt.store(
-            search_data.board.hash(),
-            search_data.root_move.mv,
-            root_depth as i32,
-            best_score,
-            Bound::Exact,
-            0,
-        );
 
         search_data.completed_depth = root_depth;
         println!("{}", search_data.to_uci_info());
@@ -120,9 +83,17 @@ pub fn start_search(search_data: &mut SearchData) -> Move {
         {
             break;
         }
+
+        // Search to a depth of AT LEAST 6, and if the best move is mate, just return that move,
+        // as it will be very hard to find better (it might not be the fastest mate ... but still).
+        // I want to implement a checkmate search at some point, so IF the score is Mate, switch to
+        // that to try and find a faster mate.
+        if root_depth <= 6 && search_data.root_move.score.abs() >= Score::MATE_IN_MAX {
+            return search_data.root_move.mv;
+        }
     }
 
-    return search_data.root_move.mv;
+    search_data.root_move.mv
 }
 
 fn search<Node: NodeType>(
@@ -206,6 +177,7 @@ fn search<Node: NodeType>(
         let mut score: i32;
         if moves_searched == 0 {
             // Assumed best move: give it a full search; there will never be an LMR here
+            // (i.e. extensions will never be less than -1)
             score = -search::<PV>(search_data, -beta, -alpha, depth + extensions, ply + 1);
         } else {
             // Null-window search; just show move isn't better
@@ -233,6 +205,11 @@ fn search<Node: NodeType>(
         if score > best_score {
             best_score = score;
             best_move = mv;
+
+            if Node::ROOT {
+                search_data.root_move.mv = mv;
+                search_data.root_move.score = score;
+            }
         }
         if score > alpha {
             alpha = score;
@@ -252,14 +229,10 @@ fn search<Node: NodeType>(
     } else {
         Bound::Exact
     };
-    search_data.shared_data.tt.store(
-        hash,
-        best_move,
-        depth,
-        best_score,
-        bound,
-        ply,
-    );
+    search_data
+        .shared_data
+        .tt
+        .store(hash, best_move, depth, best_score, bound, ply);
 
     best_score
 }
