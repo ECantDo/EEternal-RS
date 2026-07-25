@@ -37,21 +37,6 @@ impl NodeType for NonPV {
 }
 
 pub fn start_search(search_data: &mut SearchData) -> Move {
-    // let moves = search_data.board.generate_all_legal_moves(false);
-    //
-    // if moves.is_empty() {
-    //     // Position is checkmate or stalemate — nothing to search.
-    //     let score = if search_data.board.in_check() {
-    //         Score::mated_in(0)
-    //     } else {
-    //         0
-    //     };
-    //     search_data.root_move.mv = Move::NONE;
-    //     search_data.root_move.score = score;
-    //     println!("{}", search_data.to_uci_info());
-    //     return Move::NONE;
-    // }
-
     let max_depth = match search_data.time_manager.limits() {
         Limits::Depth(depth) => depth as usize,
         _ => MAX_PLY - 1,
@@ -60,7 +45,7 @@ pub fn start_search(search_data: &mut SearchData) -> Move {
     search_data.shared_data.tt.new_search();
     search_data.nnue.reset(&search_data.board);
 
-    search_data.root_move.mv = Move::NONE; // moves.get(0).mv();
+    search_data.root_move.mv = Move::NONE;
 
     for root_depth in 1..=max_depth {
         let score = search::<Root>(search_data, -Score::INF, Score::INF, root_depth as i32, 0);
@@ -158,7 +143,7 @@ fn search<Node: NodeType>(
     // ============ Search ============
     let mut moves_searched: usize = 0;
     let mut best_score = -Score::INF;
-    let mut best_move = Move::NONE; // Just keeping track, this isn't used later
+    let mut best_move = Move::NONE;
     let alpha_orig = alpha;
 
     for move_entry in ordered_moves {
@@ -208,6 +193,7 @@ fn search<Node: NodeType>(
 
         search_data.undo_move(mv);
 
+        // Basically checking if the search ended
         if score.abs() >= Score::NONE {
             if Node::ROOT && search_data.root_move.mv == Move::NONE {
                 search_data.root_move.mv = mv;

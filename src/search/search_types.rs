@@ -1,7 +1,7 @@
 use crate::nnue::NNUE;
 use crate::time_manager::Limits;
-use crate::types::tt::TranspositionTable;
 use crate::types::MAX_PLY;
+use crate::types::tt::TranspositionTable;
 use crate::{
     board::Board,
     time_manager::TimeManager,
@@ -9,10 +9,13 @@ use crate::{
 };
 use std::sync::atomic::AtomicBool;
 use std::sync::{
-    atomic::{AtomicU64, Ordering}, Arc,
-    LazyLock,
+    Arc, LazyLock,
+    atomic::{AtomicU64, Ordering},
 };
 
+// =================================================================================================
+// Root Move
+// =================================================================================================
 #[derive(Clone)]
 pub struct RootMove {
     pub mv: Move,
@@ -28,12 +31,29 @@ impl Default for RootMove {
     }
 }
 
+// =================================================================================================
+// Shared Data
+// =================================================================================================
 pub struct SharedData {
     // tt
     pub nodes: Counter,
     pub stop: AtomicBool,
     pub tt: TranspositionTable,
 }
+
+impl SharedData {
+    pub fn new() -> Self {
+        Self {
+            nodes: Counter::default(),
+            stop: AtomicBool::new(false),
+            tt: TranspositionTable::new(16),
+        }
+    }
+}
+
+// =================================================================================================
+// Search Data
+// =================================================================================================
 pub struct SearchData {
     pub board: Board,
     pub completed_depth: usize,
@@ -41,36 +61,6 @@ pub struct SearchData {
     pub root_move: RootMove,
     pub shared_data: Arc<SharedData>,
     pub time_manager: TimeManager,
-}
-
-pub struct Counter {
-    count: AtomicU64,
-}
-
-impl Counter {
-    pub fn increment(&self) {
-        self.count.fetch_add(1, Ordering::Relaxed);
-    }
-
-    pub fn add(&self, val: u64) {
-        self.count.fetch_add(val, Ordering::Relaxed);
-    }
-
-    pub fn count(&self) -> u64 {
-        self.count.load(Ordering::Relaxed)
-    }
-
-    pub fn reset(&self) {
-        self.count.store(0, Ordering::Relaxed);
-    }
-}
-
-impl Default for Counter {
-    fn default() -> Self {
-        Self {
-            count: AtomicU64::default(),
-        }
-    }
 }
 
 impl SearchData {
@@ -160,16 +150,42 @@ impl SearchData {
     }
 }
 
-impl SharedData {
-    pub fn new() -> Self {
+// =================================================================================================
+// Counter
+// =================================================================================================
+pub struct Counter {
+    count: AtomicU64,
+}
+
+impl Counter {
+    pub fn increment(&self) {
+        self.count.fetch_add(1, Ordering::Relaxed);
+    }
+
+    pub fn add(&self, val: u64) {
+        self.count.fetch_add(val, Ordering::Relaxed);
+    }
+
+    pub fn count(&self) -> u64 {
+        self.count.load(Ordering::Relaxed)
+    }
+
+    pub fn reset(&self) {
+        self.count.store(0, Ordering::Relaxed);
+    }
+}
+
+impl Default for Counter {
+    fn default() -> Self {
         Self {
-            nodes: Counter::default(),
-            stop: AtomicBool::new(false),
-            tt: TranspositionTable::new(16),
+            count: AtomicU64::default(),
         }
     }
 }
 
+// =================================================================================================
+// LMR
+// =================================================================================================
 pub static LMR_TABLE: LazyLock<[[i32; MAX_PLY]; MAX_PLY]> = LazyLock::new(|| {
     std::array::from_fn(|depth| {
         std::array::from_fn(|moves| lmr_reduction(depth as i32, moves as i32))
