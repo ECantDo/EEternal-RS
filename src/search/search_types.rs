@@ -12,6 +12,7 @@ use std::sync::{
     Arc, LazyLock,
     atomic::{AtomicU64, Ordering},
 };
+use crate::types::color::Color;
 
 // =================================================================================================
 // Root Move
@@ -59,6 +60,7 @@ impl SharedData {
 pub struct SearchData {
     pub board: Board,
     pub completed_depth: usize,
+    pub killers: Killers,
     pub nnue: NNUE,
     pub pv_table: PrincipalVariationTable,
     pub root_move: RootMove,
@@ -74,6 +76,7 @@ impl SearchData {
         Self {
             board,
             completed_depth: 0,
+            killers: Killers::default(),
             nnue,
             pv_table: PrincipalVariationTable::default(),
             root_move: RootMove::default(),
@@ -259,6 +262,42 @@ impl Default for RootPV {
         Self {
             table: Box::new([Move::None; MAX_PLY + 1]),
             len: 0,
+        }
+    }
+}
+// =================================================================================================
+// Killers
+// =================================================================================================
+pub struct Killers {
+    killers: [[Move; 2]; MAX_PLY],
+}
+
+impl Killers {
+    pub fn append(&mut self, color: Color, ply: i32, mv: Move){
+        debug_assert!(ply < MAX_PLY as i32);
+        if mv.is_capture(){
+            return;
+        }
+
+        let death = &mut self.killers[ply as usize];
+        if death[0] == mv {
+            return;
+        }
+
+        death[1] = death[0];
+        death[0] = mv;
+    }
+
+    pub fn get(&self, ply: i32) -> [Move; 2] {
+        debug_assert!(ply < MAX_PLY as i32);
+        self.killers[ply as usize]
+    }
+}
+
+impl Default for Killers{
+    fn default() -> Self {
+        Self {
+            killers: [[Move::None; 2]; MAX_PLY],
         }
     }
 }

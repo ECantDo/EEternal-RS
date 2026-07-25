@@ -76,7 +76,7 @@ pub fn start_search(search_data: &mut SearchData) -> Move {
         // I want to implement a checkmate search at some point, so IF the score is Mate, switch to
         // that to try and find a faster mate.
         // Also works for if there are no legal moves of quitting early.
-        if root_depth <= 6 && search_data.root_move.score.abs() >= Score::MATE_IN_MAX {
+        if root_depth >= 6 && search_data.root_move.score.abs() >= Score::MATE_IN_MAX {
             return search_data.root_move.mv;
         }
     }
@@ -144,7 +144,7 @@ fn search<Node: NodeType>(
     }
 
     let mut ordered_moves = OrderedMoves::new(&mut moves);
-    ordered_moves.score_moves(search_data, tt_probe.best_move);
+    ordered_moves.score_moves(search_data, tt_probe.best_move, ply);
 
     // ============ Search ============
     let mut moves_searched: usize = 0;

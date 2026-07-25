@@ -10,13 +10,16 @@ pub struct OrderedMoves<'a> {
 }
 
 pub const CAPTURE_VALUE: i32 = 1_000_000;
+pub const KILLER_VALUE: i32 = 900_000;
 
 impl<'a> OrderedMoves<'a> {
     pub fn new(move_list: &'a mut MoveList) -> Self {
         Self { move_list, idx: 0 }
     }
 
-    pub fn score_moves(&mut self, search_data: &SearchData, tt_move: Move) {
+    pub fn score_moves(&mut self, search_data: &SearchData, tt_move: Move, ply: i32) {
+        let killers = search_data.killers.get(ply);
+
         for idx in 0..self.move_list.len() {
             let mv = self.move_list.get(idx).mv();
             let score = if mv == tt_move {
@@ -24,6 +27,10 @@ impl<'a> OrderedMoves<'a> {
                 i32::MAX
             } else if mv.is_capture() {
                 CAPTURE_VALUE + search_data.board.see(mv)
+            } else if mv == killers[0] {
+                KILLER_VALUE + 10
+            } else if mv == killers[1] {
+                KILLER_VALUE
             } else {
                 0
             };
