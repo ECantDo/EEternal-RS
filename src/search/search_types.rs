@@ -19,13 +19,15 @@ use std::sync::{
 #[derive(Clone)]
 pub struct RootMove {
     pub mv: Move,
+    pub pv: RootPV,
     pub score: i32,
 }
 
 impl Default for RootMove {
     fn default() -> Self {
         Self {
-            mv: Move::NONE,
+            mv: Move::None,
+            pv: RootPV::default(),
             score: Score::NONE,
         }
     }
@@ -58,6 +60,7 @@ pub struct SearchData {
     pub board: Board,
     pub completed_depth: usize,
     pub nnue: NNUE,
+    pub pv_table: PrincipalVariationTable,
     pub root_move: RootMove,
     pub shared_data: Arc<SharedData>,
     pub time_manager: TimeManager,
@@ -72,6 +75,7 @@ impl SearchData {
             board,
             completed_depth: 0,
             nnue,
+            pv_table: PrincipalVariationTable::default(),
             root_move: RootMove::default(),
             shared_data: shared,
             time_manager: TimeManager::new(Limits::Infinite, 0, 0),
@@ -129,22 +133,26 @@ impl SearchData {
         let mut uci_out = String::from(format!("info depth {} ", self.completed_depth));
 
         if self.root_move.score.abs() >= Score::MATE_IN_MAX {
-            uci_out += format!(
+            uci_out.push_str(&format!(
                 "score mate {} ",
                 Score::score_to_mate_moves(self.root_move.score)
-            )
-            .as_str();
+            ));
         } else {
-            uci_out += format!("score cp {} ", self.root_move.score).as_str();
+            uci_out.push_str(&format!("score cp {} ", self.root_move.score));
         }
 
-        uci_out += format!("nodes {} ", nodes).as_str();
+        uci_out.push_str(&format!("nodes {} ", nodes));
 
-        uci_out += format!("time {} ", time_ms).as_str();
+        uci_out.push_str(&format!("time {} ", time_ms));
 
-        uci_out += format!("nps {} ", nps).as_str();
+        uci_out.push_str(&format!("nps {} ", nps));
 
-        uci_out += format!("hashfull {} ", self.shared_data.tt.hashfull()).as_str();
+        uci_out.push_str(&format!("hashfull {} ", self.shared_data.tt.hashfull()));
+
+        uci_out.push_str(&format!("pv {}", self.root_move.mv.to_uci()));
+        for mv in self.root_move.pv.line() {
+            uci_out.push_str(&format!(" {}", mv.to_uci()));
+        }
 
         uci_out
     }
@@ -193,4 +201,64 @@ pub static LMR_TABLE: LazyLock<[[i32; MAX_PLY]; MAX_PLY]> = LazyLock::new(|| {
 });
 fn lmr_reduction(depth: i32, moves_searched: i32) -> i32 {
     (0.75 + (depth.max(1) as f64).ln() * (moves_searched.max(1) as f64).ln() / 2.5).max(0.0) as i32
+}
+
+// =================================================================================================
+// PV Line
+// =================================================================================================
+#[derive(Clone)]
+pub struct PrincipalVariationTable {
+    table: Box<[[Move; MAX_PLY + 1]]>,
+    len: [usize; MAX_PLY + 1],
+}
+
+impl PrincipalVariationTable {
+    pub const fn clear(&mut self, ply: usize) {
+        self.len[ply] = 0;
+    }
+
+    pub fn update(&mut self, ply: usize, mv: Move) {
+        self.table[ply][0] = mv;
+        self.len[ply] = self.len[ply + 1] + 1;
+
+        for i in 0..self.len[ply + 1] {
+            self.table[ply][i + 1] = self.table[ply + 1][i];
+        }
+    }
+}
+
+impl Default for PrincipalVariationTable {
+    fn default() -> Self {
+        Self {
+            table: vec![[Move::None; MAX_PLY + 1]; MAX_PLY + 1].into_boxed_slice(),
+            len: [0; MAX_PLY + 1],
+        }
+    }
+}
+
+#[derive(Clone)]
+pub struct RootPV {
+    table: Box<[Move; MAX_PLY + 1]>,
+    len: usize,
+}
+
+impl RootPV {
+    pub fn line(&self) -> &[Move] {
+        &self.table[..self.len]
+    }
+
+    pub fn commit_from_pv(&mut self, src: &PrincipalVariationTable, ply: usize) {
+        let len = src.len[ply].min(MAX_PLY + 1);
+        self.len = len;
+        self.table[..len].copy_from_slice(&src.table[ply][..len]);
+    }
+}
+
+impl Default for RootPV {
+    fn default() -> Self {
+        Self {
+            table: Box::new([Move::None; MAX_PLY + 1]),
+            len: 0,
+        }
+    }
 }

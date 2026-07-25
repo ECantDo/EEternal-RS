@@ -26,7 +26,7 @@ pub enum MoveFlag {
 }
 
 impl Move {
-    pub const NONE: Self = Self(0);
+    pub const None: Self = Self(0);
 
     pub const fn new(from: Square, to: Square, flag: MoveFlag) -> Self {
         Self((from as u16) | ((to as u16) << 6) | ((flag as u16) << 12))
@@ -72,7 +72,7 @@ impl Move {
         PieceType::new(((self.flag() as usize) & 3) + PieceType::Knight as usize)
     }
 
-    pub fn to_uci(self, _board: &Board) -> String {
+    pub fn to_uci(self) -> String {
         let mut output = format!("{}{}", self.from(), self.to());
 
         if self.is_promotion() {
@@ -91,6 +91,6 @@ impl Move {
 
 impl Default for Move {
     fn default() -> Self {
-        Move::NONE
+        Move::None
     }
 }

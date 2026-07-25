@@ -45,7 +45,9 @@ pub fn start_search(search_data: &mut SearchData) -> Move {
     search_data.shared_data.tt.new_search();
     search_data.nnue.reset(&search_data.board);
 
-    search_data.root_move.mv = Move::NONE;
+    search_data.root_move.mv = Move::None;
+
+    search_data.pv_table.clear(0);
 
     for root_depth in 1..=max_depth {
         let score = search::<Root>(search_data, -Score::INF, Score::INF, root_depth as i32, 0);
@@ -93,6 +95,10 @@ fn search<Node: NodeType>(
     debug_assert!(-Score::INF <= alpha && alpha < beta && beta <= Score::INF);
 
     search_data.shared_data.nodes.increment();
+
+    if !Node::ROOT && Node::PV {
+        search_data.pv_table.clear(ply as usize);
+    }
 
     if search_data.time_manager.check_time(search_data)
         || search_data.shared_data.stop.load(Ordering::Relaxed)
@@ -143,7 +149,7 @@ fn search<Node: NodeType>(
     // ============ Search ============
     let mut moves_searched: usize = 0;
     let mut best_score = -Score::INF;
-    let mut best_move = Move::NONE;
+    let mut best_move = Move::None;
     let alpha_orig = alpha;
 
     for move_entry in ordered_moves {
@@ -195,9 +201,6 @@ fn search<Node: NodeType>(
 
         // Basically checking if the search ended
         if score.abs() >= Score::NONE {
-            if Node::ROOT && search_data.root_move.mv == Move::NONE {
-                search_data.root_move.mv = mv;
-            }
             return score;
         }
 
@@ -210,13 +213,18 @@ fn search<Node: NodeType>(
             if Node::ROOT {
                 search_data.root_move.mv = mv;
                 search_data.root_move.score = score;
+                search_data.root_move.pv.commit_from_pv(&search_data.pv_table, 1);
+            } else if Node::PV {
+                search_data.pv_table.update(ply as usize, mv);
             }
-        }
-        if score > alpha {
-            alpha = score;
-        }
-        if alpha >= beta {
-            break;
+            // Only need to check if score is better than alpha, when the best score changes.
+            if score > alpha {
+                alpha = score;
+                // Only need to check if alpha is better than beta when alpha changes
+                if alpha >= beta {
+                    break;
+                }
+            }
         }
 
         moves_searched += 1;
