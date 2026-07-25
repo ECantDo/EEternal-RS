@@ -12,7 +12,6 @@ use std::sync::{
     Arc, LazyLock,
     atomic::{AtomicU64, Ordering},
 };
-use crate::types::color::Color;
 
 // =================================================================================================
 // Root Move
@@ -273,9 +272,9 @@ pub struct Killers {
 }
 
 impl Killers {
-    pub fn append(&mut self, color: Color, ply: i32, mv: Move){
+    pub fn append(&mut self, ply: i32, mv: Move) {
         debug_assert!(ply < MAX_PLY as i32);
-        if mv.is_capture(){
+        if mv.is_capture() {
             return;
         }
 
@@ -294,7 +293,7 @@ impl Killers {
     }
 }
 
-impl Default for Killers{
+impl Default for Killers {
     fn default() -> Self {
         Self {
             killers: [[Move::None; 2]; MAX_PLY],

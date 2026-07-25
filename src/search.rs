@@ -224,7 +224,7 @@ fn search<Node: NodeType>(
                 if alpha >= beta {
 
                     // `.append(...)` checks if it is a quiet move for me
-                    search_data.killers.append(search_data.board.side_to_move(), ply, mv);
+                    search_data.killers.append(ply, mv);
 
                     break;
                 }
