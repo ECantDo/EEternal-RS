@@ -1,4 +1,7 @@
-# EEternal Chess
+<div align="center">
+	<img width="256" height="256" alt="EEternalRS Icon" src="https://github.com/user-attachments/assets/73db6acf-4bdc-4e05-82a0-6961222d5345" />
+	<h1>EEternal Chess</h1>
+</div>
 
 ---
 
