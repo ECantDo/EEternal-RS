@@ -1,18 +1,20 @@
-pub mod board;
-
-pub mod types;
-
 pub mod attacking;
 
-pub mod utils;
+pub mod board;
 
-pub mod uci;
-
-pub mod search;
+pub mod history;
 
 pub mod nnue;
 
+pub mod search;
+
 pub mod time_manager;
+
+pub mod types;
+
+pub mod uci;
+
+pub mod utils;
 
 pub fn initialize() {
     attacking::initialize_lookups();
@@ -22,7 +24,7 @@ pub fn initialize() {
     } else {
         println!("info string No NNUE network found, using classical evaluation");
     }
-    
+
     // Init search stuff
     search::search_types::LMR_TABLE[0][0];
 }
