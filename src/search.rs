@@ -244,6 +244,9 @@ fn search<Node: NodeType>(
                         // Quiet Move History Heuristic
                         let bonus = history_bonus(depth);
                         let stm = search_data.board.side_to_move();
+                        // threats = squares attacked by the OPPONENT of `stm` (the mover).
+                        // Must match score_quiet()'s convention exactly, or update()/get() write
+                        // and read different table slots for the same real position.
                         let threats = search_data.board.attacks_by_color(!stm);
 
                         search_data.quiet_history.update(threats, stm, mv, bonus);
