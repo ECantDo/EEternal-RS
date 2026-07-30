@@ -1,3 +1,4 @@
+use crate::board::generate_moves::AllMoves;
 use crate::search::move_ordering::OrderedMoves;
 use crate::search::qsearch::qsearch;
 use crate::search::search_types::LMR_TABLE;
@@ -7,7 +8,6 @@ use crate::{
     types::{MAX_PLY, moves::Move, score::Score, tt::Bound},
 };
 use std::sync::atomic::Ordering;
-use crate::board::generate_moves::AllMoves;
 
 mod move_ordering;
 pub mod qsearch;
@@ -159,8 +159,16 @@ fn search<Node: NodeType>(
     let mut best_move = Move::None;
     let alpha_orig = alpha;
 
+    // Len of 32 since the average moves is ~35, and some moves in there are going to be non-quiet.
+    //  And even less since the first 5 moves should almost always contain the best move (according
+    //  to my engine). 32 seems like a good balance
+    let mut quiet_moves_tried: [Move; 32] = [Move::None; 32];
+    let mut quiet_moves_tried_len: usize = 0;
+
     for move_entry in ordered_moves {
         let mv = move_entry.mv();
+        let is_quiet = mv.is_quiet();
+
         search_data.make_move(mv);
 
         let mut check_extensions: i32 = 0;
@@ -220,7 +228,10 @@ fn search<Node: NodeType>(
             if Node::ROOT {
                 search_data.root_move.mv = mv;
                 search_data.root_move.score = score;
-                search_data.root_move.pv.commit_from_pv(&search_data.pv_table, 1);
+                search_data
+                    .root_move
+                    .pv
+                    .commit_from_pv(&search_data.pv_table, 1);
             } else if Node::PV {
                 search_data.pv_table.update(ply as usize, mv);
             }
@@ -229,15 +240,33 @@ fn search<Node: NodeType>(
                 alpha = score;
                 // Only need to check if alpha is better than beta when alpha changes
                 if alpha >= beta {
+                    if is_quiet {
+                        // Quiet Move History Heuristic
+                        let bonus = history_bonus(depth);
+                        let stm = search_data.board.side_to_move();
+                        let threats = search_data.board.attacks_by_color(!stm);
 
-                    // `.append(...)` checks if it is a quiet move for me
-                    search_data.killers.append(ply, mv);
+                        search_data.quiet_history.update(threats, stm, mv, bonus);
+                        for &prev in &quiet_moves_tried[..quiet_moves_tried_len] {
+                            search_data.quiet_history.update(threats, stm, prev, -bonus);
+                        }
+
+                        // Killers
+                        search_data.killers.append(ply, mv);
+                    }
 
                     break;
                 }
             }
         }
+        // Update tested quiets
+        if is_quiet && quiet_moves_tried_len < 32 {
+            // If we end up > 32, Woah, complex position.
+            quiet_moves_tried[quiet_moves_tried_len] = mv;
+            quiet_moves_tried_len += 1;
+        }
 
+        // Update moves searched
         moves_searched += 1;
     }
 
@@ -255,4 +284,9 @@ fn search<Node: NodeType>(
         .store(hash, best_move, depth, best_score, bound, ply);
 
     best_score
+}
+
+/// like basically everything else, this needs tuning
+fn history_bonus(depth: i32) -> i32 {
+    (depth * depth * 4).min(1600)
 }

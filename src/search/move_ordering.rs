@@ -1,4 +1,5 @@
 use crate::types::move_list::MoveEntry;
+use crate::types::piece::PieceType;
 use crate::{
     search::search_types::SearchData,
     types::{move_list::MoveList, moves::Move},
@@ -32,7 +33,7 @@ impl<'a> OrderedMoves<'a> {
             } else if mv == killers[1] {
                 KILLER_VALUE
             } else {
-                0
+                score_quiet(search_data, mv, ply)
             };
             self.move_list.set_score(idx, score);
         }
@@ -67,4 +68,19 @@ impl<'a> Iterator for OrderedMoves<'a> {
         }
         Some(self.select_next_best())
     }
+}
+
+fn score_quiet(search_data: &SearchData, mv: Move, ply: i32) -> i32 {
+    // Get their threats ... haven't made the move yet, so look to where they are attacking
+    let my_side = search_data.board.side_to_move();
+    let threats = search_data.board.attacks_by_color(!my_side);
+    // let occ = search_data.board.occupancies();
+
+    // Pawn, Knight, Bishop, Rook, Queen, King
+    // TODO: This
+    // let escape_attack_score: [i32; PieceType::NUM] = [0, 8000, 8000, 15000, 20000, 0];
+    // let pt: PieceType = search_data.board.get_piece_on_square(mv.from()).piece_type();
+    // score += escape[pt] * <is threatened?>
+
+    search_data.quiet_history.get(threats, my_side, mv)
 }

@@ -277,9 +277,6 @@ pub struct Killers {
 impl Killers {
     pub fn append(&mut self, ply: i32, mv: Move) {
         debug_assert!(ply < MAX_PLY as i32);
-        if mv.is_capture() {
-            return;
-        }
 
         let death = &mut self.killers[ply as usize];
         if death[0] == mv {

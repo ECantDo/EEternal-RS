@@ -51,6 +51,10 @@ impl Move {
     pub const fn is_capture(self) -> bool {
         (self.0 >> 12) & 0b0100 != 0 // bit 2 of the flag nibble
     }
+    
+    pub const fn is_quiet(self) -> bool {
+        (self.0 >> 12) & 0b0100 == 0
+    }
 
     pub const fn is_promotion(self) -> bool {
         (self.0 >> 12) & 0b1000 != 0 // bit 3 of the flag nibble

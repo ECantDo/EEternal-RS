@@ -1,22 +1,16 @@
 mod evaluate;
 pub mod generate_moves;
+mod is_legal;
 mod make_move;
 pub mod parse;
-mod is_legal;
 
-use crate::{
-    attacking::{
-        get_bishop_attacks, get_king_attacks, get_knight_attacks, get_pawn_attacks,
-        get_rook_attacks,
-    },
-    types::{
-        bitboard::Bitboard,
-        castling::Castling,
-        color::Color,
-        hash_keys::HashKeys,
-        piece::{Piece, PieceType},
-        square::Square,
-    },
+use crate::types::{
+    bitboard::Bitboard,
+    castling::Castling,
+    color::Color,
+    hash_keys::HashKeys,
+    piece::{Piece, PieceType},
+    square::Square,
 };
 
 #[derive(Copy, Clone, Default)]
@@ -162,8 +156,7 @@ impl Board {
         }
         let current: u64 = self.board_state.hash_keys.zobrist();
         // let mut count: i32 = 1;
-        let lookback =
-            (self.board_state.half_move_clock as usize).min(len - 1);
+        let lookback = (self.board_state.half_move_clock as usize).min(len - 1);
 
         let mut i = 1;
         while i <= lookback {
@@ -205,9 +198,13 @@ impl Board {
             .toggle_castling(self.board_state.castling);
     }
 
-    pub fn piece_type_attacks(&self, color: Color, piece_type: PieceType) -> Bitboard{
+    pub fn piece_type_attacks(&self, color: Color, piece_type: PieceType) -> Bitboard {
         debug_assert!(piece_type != PieceType::None);
         self.board_state.piece_threats[color][piece_type]
+    }
+
+    pub fn attacks_by_color(&self, color: Color) -> Bitboard {
+        self.board_state.threats_by[color]
     }
 
     pub fn is_square_attacked(&self, square: Square, by: Color) -> bool {

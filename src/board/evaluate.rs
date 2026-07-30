@@ -12,6 +12,7 @@ impl super::Board {
             }
             // Flip 1 -> white becomes negative
             // Flip 2 -> white becomes positive (black negative)
+            // This does do `material(white) - material(black)`, trust
             score = -score;
         }
         if self.side_to_move() == Color::White {
