@@ -341,7 +341,7 @@ impl Board {
         ] {
             recomputed +=
                 self.colored_pieces(Color::White, pt).popcount() as i32 * PieceType::value(pt);
-            recomputed +=
+            recomputed -=
                 self.colored_pieces(Color::Black, pt).popcount() as i32 * PieceType::value(pt);
         }
         debug_assert_eq!(
