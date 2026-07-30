@@ -16,13 +16,15 @@ pub mod uci;
 
 pub mod utils;
 
+pub mod rays;
+
 pub fn initialize() {
     attacking::initialize_lookups();
     #[cfg(feature = "embed-nnue")]
     if nnue::try_init_embedded() {
-        println!("info string Loaded embedded NNUE network");
+        println!("Loaded embedded NNUE network");
     } else {
-        println!("info string No NNUE network found, using classical evaluation");
+        println!("No NNUE network found, using classical evaluation");
     }
 
     // Init search stuff

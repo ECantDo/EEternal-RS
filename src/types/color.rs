@@ -15,6 +15,8 @@ impl Color {
     
     pub const ALL: [Self; Self::NUM] = [Color::White, Color::Black];
 
+    pub const ALL: [Self; Self::NUM] = [Self::White, Self::Black];
+
     pub const fn new(value: u8) -> Self {
         debug_assert!(value < Self::NUM as u8);
         unsafe { std::mem::transmute(value) }

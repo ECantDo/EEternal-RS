@@ -79,6 +79,8 @@ impl Board {
 
         board.refresh_hash();
         
+        board.refresh_piece_threats();
+        
         Ok(board)
     }
 

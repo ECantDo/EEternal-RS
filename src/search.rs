@@ -7,6 +7,7 @@ use crate::{
     types::{MAX_PLY, moves::Move, score::Score, tt::Bound},
 };
 use std::sync::atomic::Ordering;
+use crate::board::generate_moves::AllMoves;
 
 mod move_ordering;
 pub mod qsearch;
@@ -37,6 +38,12 @@ impl NodeType for NonPV {
 }
 
 pub fn start_search(search_data: &mut SearchData) -> Move {
+    let mut moves = search_data.board.generate_all_legal_moves::<AllMoves>();
+    debug_assert!(
+        !moves.is_empty(),
+        "start_search called on a position with no legal moves"
+    );
+
     let max_depth = match search_data.time_manager.limits() {
         Limits::Depth(depth) => depth as usize,
         _ => MAX_PLY - 1,
@@ -132,7 +139,7 @@ fn search<Node: NodeType>(
     }
 
     // ============ Generate Moves ============
-    let mut moves = search_data.board.generate_all_legal_moves(false);
+    let mut moves = search_data.board.generate_all_legal_moves::<AllMoves>();
     let in_check = search_data.board.in_check();
 
     if moves.is_empty() {

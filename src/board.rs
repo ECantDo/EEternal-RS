@@ -1,7 +1,8 @@
 mod evaluate;
-mod generate_moves;
+pub mod generate_moves;
 mod make_move;
 pub mod parse;
+mod is_legal;
 
 use crate::{
     attacking::{
@@ -26,6 +27,12 @@ struct BoardState {
     half_move_clock: u8, // For the 50 move rule
     hash_keys: HashKeys,
     material: i32,
+
+    checkers: Bitboard,
+    pinned: [Bitboard; Color::NUM],
+    pinners: [Bitboard; Color::NUM],
+    piece_threats: [[Bitboard; PieceType::NUM]; Color::NUM],
+    threats_by: [Bitboard; Color::NUM],
 }
 
 #[derive(Clone)]
@@ -50,6 +57,7 @@ impl Board {
     }
 
     pub fn king_square(&self, color: Color) -> Square {
+        debug_assert!(self.colored_pieces(color, PieceType::King).not_empty());
         self.colored_pieces(color, PieceType::King).lsb()
     }
 
@@ -197,18 +205,21 @@ impl Board {
             .toggle_castling(self.board_state.castling);
     }
 
-    pub fn is_square_attacked(&self, square: Square, by: Color) -> bool {
-        let occ = self.occupancies();
-        let bishops_queens = self.pieces(PieceType::Bishop) | self.pieces(PieceType::Queen);
-        let rooks_queens = self.pieces(PieceType::Rook) | self.pieces(PieceType::Queen);
-        let their = self.color_bitboards[by];
+    pub fn piece_type_attacks(&self, color: Color, piece_type: PieceType) -> Bitboard{
+        debug_assert!(piece_type != PieceType::None);
+        self.board_state.piece_threats[color][piece_type]
+    }
 
-        // Don't worry about king attacks ... the king can never attack the king
-        (get_pawn_attacks(square, !by) & self.pieces(PieceType::Pawn) & their).not_empty()
-            || (get_knight_attacks(square) & self.pieces(PieceType::Knight) & their).not_empty()
-            || (get_king_attacks(square) & self.pieces(PieceType::King) & their).not_empty()
-            || (get_bishop_attacks(square, occ) & bishops_queens & their).not_empty()
-            || (get_rook_attacks(square, occ) & rooks_queens & their).not_empty()
+    pub fn is_square_attacked(&self, square: Square, by: Color) -> bool {
+        (self.board_state.threats_by[by] & square.to_bitboard()).not_empty()
+    }
+
+    pub fn checkers(&self) -> Bitboard {
+        self.board_state.checkers
+    }
+
+    pub fn pinned(&self, color: Color) -> Bitboard {
+        self.board_state.pinned[color]
     }
 }
 

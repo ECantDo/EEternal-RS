@@ -1,4 +1,4 @@
-use crate::{board::Board};
+use crate::{board::{Board, generate_moves::*}};
 
 use std::time::Instant;
 
@@ -60,7 +60,7 @@ impl Board {
             return 1;
         }
 
-        let ml = self.generate_all_legal_moves(false);
+        let ml = self.generate_all_legal_moves::<AllMoves>();
 
         if depth == 1 {
             return ml.len() as u64;
@@ -79,7 +79,7 @@ impl Board {
             return 1;
         }
 
-        let ml = self.generate_all_legal_moves(false);
+        let ml = self.generate_all_legal_moves::<AllMoves>();
 
         let mut nodes = 0;
         for move_entry in &ml {

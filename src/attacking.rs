@@ -38,4 +38,6 @@ pub fn initialize_lookups() {
     let _ = king_attacks(Square::A1);
     let _ = knight_attacks(Square::A1);
     let _ = pawn_attacks(Square::A2, Color::White); // Just to be safe, A2, since pawns cant be on A1
+    let _ = crate::rays::between(Square::A1, Square::A2);
+    let _ = crate::rays::line_through(Square::A1, Square::A2);
 }
