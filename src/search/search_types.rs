@@ -1,3 +1,4 @@
+use crate::history::QuietHistory;
 use crate::nnue::NNUE;
 use crate::time_manager::Limits;
 use crate::types::MAX_PLY;
@@ -62,6 +63,7 @@ pub struct SearchData {
     pub killers: Killers,
     pub nnue: NNUE,
     pub pv_table: PrincipalVariationTable,
+    pub quiet_history: QuietHistory,
     pub root_move: RootMove,
     pub shared_data: Arc<SharedData>,
     pub time_manager: TimeManager,
@@ -78,6 +80,7 @@ impl SearchData {
             killers: Killers::default(),
             nnue,
             pv_table: PrincipalVariationTable::default(),
+            quiet_history: QuietHistory::default(),
             root_move: RootMove::default(),
             shared_data: shared,
             time_manager: TimeManager::new(Limits::Infinite, 0, 0),
