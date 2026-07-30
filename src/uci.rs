@@ -1,6 +1,5 @@
-use crate::types::move_list::MoveEntry;
 use crate::{
-    board::Board,
+    board::{Board, generate_moves::AllMoves},
     search::{
         search_types::{SearchData, SharedData},
         start_search,
@@ -8,6 +7,7 @@ use crate::{
     time_manager::{Limits, TimeManager},
     types::{
         color::Color,
+        move_list::MoveEntry,
         {piece::PieceType, square::Square},
     },
 };
@@ -206,7 +206,7 @@ fn parse_uci_move(board: &mut Board, uci: &str) -> Option<MoveEntry> {
         move_entry.mv().from() == from
             && move_entry.mv().to() == to
             && (!move_entry.mv().is_promotion()
-                || Some(move_entry.mv().promotion_piece_type()) == promo)
+            || Some(move_entry.mv().promotion_piece_type()) == promo)
     })
 }
 

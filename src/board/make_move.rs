@@ -1,17 +1,18 @@
-use crate::rays::between;
 use crate::{
     attacking::{
         get_bishop_attacks, get_king_attacks, get_knight_attacks, get_pawn_attacks,
         get_queen_attacks, get_rook_attacks,
     },
     board::Board,
+    rays::between,
     types::{
+        UP_DIR,
         bitboard::Bitboard,
-        castling::{castling_rook_squares, CASTLING_RIGHTS},
+        castling::{CASTLING_RIGHTS, castling_rook_squares},
         moves::{Move, MoveFlag},
         piece::{Piece, PieceType},
         square::Square,
-        UP_DIR,
+        color::Color,
     },
 };
 
@@ -152,7 +153,7 @@ impl Board {
     }
 
     pub fn update_move_threat(&mut self, mv: Move) {
-        debug_assert!(mv != Move::NONE);
+        debug_assert!(mv != Move::None);
         let occ = self.occupancies();
         let king_occ: [Bitboard; Color::NUM] = [
             occ ^ self.colored_pieces(Color::Black, PieceType::King),
@@ -217,7 +218,8 @@ impl Board {
             }
             let rook_ray = get_rook_attacks(sq, occ);
             let bishop_ray = get_bishop_attacks(sq, occ);
-            let mut hits = (rook_ray & (self.pieces(PieceType::Rook) | self.pieces(PieceType::Queen)))
+            let mut hits = (rook_ray
+                & (self.pieces(PieceType::Rook) | self.pieces(PieceType::Queen)))
                 | (bishop_ray & (self.pieces(PieceType::Bishop) | self.pieces(PieceType::Queen)));
 
             while hits.not_empty() {

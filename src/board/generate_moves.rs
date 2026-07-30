@@ -1,22 +1,20 @@
-use crate::rays::{between, line_through};
-use crate::types::castling::CastlingDirections;
-use crate::types::moves::{Move, MoveFlag};
-use crate::types::{PAWN_START, UP_DIR};
 use crate::{
     attacking::{
         get_bishop_attacks, get_king_attacks, get_knight_attacks, get_pawn_attacks,
         get_queen_attacks, get_rook_attacks,
     },
+    rays::{between, line_through},
     types::{
-        bitboard::Bitboard, color::Color, move_list::MoveList, piece::PieceType, square::Square,
+        PAWN_START, UP_DIR,
+        bitboard::Bitboard,
+        castling::CastlingDirections,
+        color::Color,
+        move_list::MoveList,
+        moves::{Move, MoveFlag},
+        piece::PieceType,
+        square::Square,
     },
 };
-
-#[derive(Copy, Clone, Eq, PartialEq)]
-enum MovegenKind {
-    Quiet,
-    Noisy,
-}
 
 // move_ordering.rs (or wherever ScoreType/NodeType-style traits live)
 pub trait GenType {

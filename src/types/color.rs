@@ -12,8 +12,6 @@ pub enum Color {
 
 impl Color {
     pub const NUM: usize = 2;
-    
-    pub const ALL: [Self; Self::NUM] = [Color::White, Color::Black];
 
     pub const ALL: [Self; Self::NUM] = [Self::White, Self::Black];
 
