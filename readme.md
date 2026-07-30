@@ -32,6 +32,11 @@ My current goal is to get the engine back to where I left the C++ engine, then g
 
 \* _[See below](#approx-elo) for the ELO improvement_
 
+**Why share *everything*?**<br>
+I am wanting to save a full history of changes that I have made, to track the Elo progression
+of my engine. Furthermore, I would like to be able to look back on this project and point at
+some of the most important features to add when starting out with chess programming.
+
 ### UCI
 
 The following UCI commands are implemented:
