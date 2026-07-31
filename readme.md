@@ -29,13 +29,14 @@ My current goal is to get the engine back to where I left the C++ engine, then g
 | 0.0.7          | Major bug fix; was using the fullmove counter, as the half-move clock; so games lasting more than 50 full moves (or even just searching into 50 full moves) evaluated the board as a draw. Resulting in throwing A LOT of games.                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 | 0.0.8          | Included [Pricipal Variation Search](https://www.chessprogramming.org/Principal_Variation_Search) (PVS). During search, on non-PV nodes, the search does a [Null Window](https://www.chessprogramming.org/Null_Window) to prove that the move is worse than the current PV.                                                                                                                                                                                                                                                                                                                                                                                                        |
 | 0.0.9          | Added [Killer Moves](https://www.chessprogramming.org/Killer_Move). Killer moves are quiet (non-capturing) moves that previously caused a beta cutoff (`alpha >= beta`) at the same ply. Since they're often strong regardless of what led up to them, they get tried early when searching sibling branches. For example, if a move finds mate and the opponent doesn't block it, that same move is likely to still be strong against a lot of other responses.                                                                                                                                                                                                                    |
+| 0.0.10         | Added a [History Heuristic](https://www.chessprogramming.org/History_Heuristic) for quiet moves [Read More](docs/history_heuristics.md).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
 
 \* _[See below](#approx-elo) for the ELO improvement_
 
 **Why share *everything*?**<br>
-I am wanting to save a full history of changes that I have made, to track the Elo progression
-of my engine. Furthermore, I would like to be able to look back on this project and point at
-some of the most important features to add when starting out with chess programming.
+I am wanting to save a full history of changes that I have made, to track the Elo progression of my engine. Furthermore,
+I would like to be able to look back on this project and point at some of the most important features to add when
+starting out with chess programming.
 
 ### UCI
 
@@ -66,20 +67,6 @@ proper chess engine, so I also didn't know what I was doing.
 
 ## Approx ELO
 
-The ELO has been calculated based on engines that played in
-[Sebastian Lague's Chess Challenge](https://github.com/SebLague/Chess-Challenge),
-[Ratings List](https://github.com/SebLague/Tiny-Chess-Bot-Challenge-Results/blob/main/RatingsList.txt)
-of the Swiss and Knockout games played. The ELOs are based on the
-[Boychesser](https://github.com/analog-hors/Boychesser) engine (ELO: 2772 +/- 11, at the time).
-
-Or I have found other engines that are similarly rated based
-on [CCRL](https://computerchess.org.uk/404/cgi/compare_engines.cgi?class=Single-CPU+engines&only_best_in_class=on)
-ratings, for example, because I thought it would be fun, I decided to pit it
-against [Reckless](https://github.com/codedeliveryservice/Reckless), but in its earlier forms.
-
-Games are played with a time control of `10+0.1s`, and with an opening book of 8 moves, each engine gets the chance to
-play as both white and black, from the same position.
-
 | Version Number                                                          | Approx ELO      | VS                                                                                                                                      | VS Elo (Assumed) | WLD                                             |
 |-------------------------------------------------------------------------|-----------------|-----------------------------------------------------------------------------------------------------------------------------------------|------------------|-------------------------------------------------|
 | [0.0.9](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.0.9)     | **2696 +/- 14** | `drip leab` (by: JeffLegendPower, AtadOfAChad, Gonumen, KevinStriker), `Reckless 0.3.0`                                                 | 2602, 2616       | (614, 207, 179), (452, 356, 192)                |
@@ -92,61 +79,4 @@ play as both white and black, from the same position.
 | [0.0.2](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.0.2)     | **1098 +/- 12** | `Turochamp` (Faithful) (by: P Rivero)                                                                                                   | 1026             | Not Saved                                       |
 | [0.0.1](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.0.1-RNG) | **1**           | N/A                                                                                                                                     | N/A              | N/A                                             |
 
-## Elo Calculation
-
-_As of V0.0.4_
-
-The ELO is calculated based on assuming that the *guessed* ELO ratings are the *true* ratings. That leads into the elo
-ratings are still approximate, but can still be wildly off. The more games that are played, the better approximation
-that we can get, relative to the assumed true ELO ratings of the played bots.
-
-```py
-import math
-
-input_engine_elo: list[int] = [...]
-
-wld: list[tuple[int, int, int]] = [...]
-
-
-def calc_error(win_rate: tuple[int, int, int], p: float):
-	N = sum(win_rate)
-	p_w = win_rate[0] / N
-	p_d = win_rate[2] / N
-	p_l = win_rate[1] / N
-
-	variance = p_w * ((1 - p) ** 2) + p_d * ((0.5 - p) ** 2) + p_l * ((0 - p) ** 2)
-	std_err = (variance / N) ** 0.5
-
-	p_low = p - 1.95996 * std_err
-	p_high = p + 1.95996 * std_err
-
-	elo_low = 400 * math.log10(p_low / (1 - p_low))
-	elo_high = 400 * math.log10(p_high / (1 - p_high))
-
-	width = elo_high - elo_low
-	pm = width / 2
-
-	return pm
-
-
-def main():
-	score_percentage: list[float] = [(x[0] + 0.5 * x[2]) / sum(x) for x in wld]
-
-	delta_elo: list[float] = [400 * math.log10(p / (1 - p)) for p in score_percentage]
-
-	estimated_elo = [sum(x) for x in zip(input_engine_elo, delta_elo)]
-
-	elo_error = [calc_error(wld[idx], p) for idx, p in enumerate(score_percentage)]
-
-	# Calc elo POOLED
-
-	weights: list[float] = [1 / (err ** 2) for err in elo_error]
-
-	pooled_elo = sum(val[0] * val[1] for val in zip(weights, estimated_elo)) / sum(weights)
-	pooled_error = 1 / (sum(weights) ** 0.5)
-
-	print(f"{pooled_elo} +/- {pooled_error}")
-
-if __name__ == "__main__":
-	main()
-```
+[Read more about the Elo Calculation here](docs/elo_calculation.md).
