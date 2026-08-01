@@ -50,7 +50,7 @@ pub struct QuietHistory {
 ```
 
 Moving forward, I am going to be calling the cached version `a` and the non-cached version `b` with the major version
-being `0.0.10`.
+being `0.1.0`.
 
 Despite having searched 4 million fewer nodes, from the same position, version `b` performed much worse than version
 `a`, clearly there is a bug somewhere, though I was never able to identify it. Since both implementations should produce
@@ -75,7 +75,7 @@ It should also be noted at this time, there has not been any tuning for the cons
 true potential Elo improvement is unknown, but can still give some good insights while using values from thin air, but
 seem good.
 
-Next, let's introduce version `c` (0.0.10c), this version has been modified from version `a` so that the History
+Next, let's introduce version `c`, this version has been modified from version `a` so that the History
 Heuristic is saved between searches. Everything else is the same. Some initial testing suggests that sharing (at the
 very least, the Quiet move) histories across a full game does not pose significant improvement.
 
