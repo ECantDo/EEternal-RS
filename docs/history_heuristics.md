@@ -58,7 +58,7 @@ identical search trees, the differing node counts indicate a bug rather than an 
 fussed about the node count being different, or finding the bug.
 
 ```terminaloutput
-Score of EEternalRS-0_0_10b vs EEternalRS-0_0_10a: 71 - 178 - 187  [0.377] 436
+Score of EEternalRS-0_1_0b vs EEternalRS-0_1_0a: 71 - 178 - 187  [0.377] 436
 Elo difference: -87.0 +/- 24.8, LOS: 0.0 %, DrawRatio: 42.9 %
 SPRT: llr -2.95 (-100.2%), lbound -2.94, ubound 2.94 - H0 was accepted
 ```
@@ -66,7 +66,7 @@ SPRT: llr -2.95 (-100.2%), lbound -2.94, ubound 2.94 - H0 was accepted
 And looking at version `a` compared to the previous major version, it has done quite nicely.
 
 ```terminaloutput
-Score of EEternalRS-0_0_10a vs EEternalRS-0_0_9: 257 - 120 - 185  [0.622] 562
+Score of EEternalRS-0_1_0a vs EEternalRS-0_0_9: 257 - 120 - 185  [0.622] 562
 Elo difference: 86.4 +/- 23.9, LOS: 100.0 %, DrawRatio: 32.9 %
 SPRT: llr 2.96 (100.4%), lbound -2.94, ubound 2.94 - H1 was accepted
 ```
@@ -80,7 +80,7 @@ Heuristic is saved between searches. Everything else is the same. Some initial t
 very least, the Quiet move) histories across a full game does not pose significant improvement.
 
 ```terminaloutput
-Score of EEternalRS-0_0_10c vs EEternalRS-0_0_10a: 619 - 584 - 797  [0.509] 2000
+Score of EEternalRS-0_1_0c vs EEternalRS-0_1_0a: 619 - 584 - 797  [0.509] 2000
 Elo difference: 6.1 +/- 11.8, LOS: 84.4 %, DrawRatio: 39.9 %
 SPRT: llr 0.493 (16.7%), lbound -2.94, ubound 2.94
 ```
