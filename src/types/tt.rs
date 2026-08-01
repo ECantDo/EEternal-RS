@@ -1,11 +1,12 @@
-use std::sync::atomic::{AtomicU64, AtomicU8, Ordering};
 use crate::types::moves::Move;
+#[cfg(feature = "nightly")]
+use std::hint::{Locality, prefetch_read};
+use std::sync::atomic::{AtomicU8, AtomicU64, Ordering};
 
 const AGE_CYCLE: u8 = 1 << 5;
 const AGE_MASK: u8 = AGE_CYCLE - 1;
 
 const CLUSTER_SIZE: usize = 3;
-
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
 #[repr(u8)]
@@ -104,12 +105,15 @@ struct TTCluster {
     // keys: u64,
 }
 
-
 impl TTCluster {
     fn empty() -> Self {
         let empty = TTEntry::empty().to_bits();
         Self {
-            entries: [AtomicU64::new(empty), AtomicU64::new(empty), AtomicU64::new(empty)],
+            entries: [
+                AtomicU64::new(empty),
+                AtomicU64::new(empty),
+                AtomicU64::new(empty),
+            ],
         }
     }
 
@@ -134,12 +138,17 @@ pub struct TranspositionTable {
 }
 
 impl TranspositionTable {
+    pub const DEFAULT_SIZE_MB: usize = 16;
+
     pub fn new(size_mb: usize) -> Self {
-        let cluster_bytes = std::mem::size_of::<TTCluster>();
+        let cluster_bytes = size_of::<TTCluster>();
         let num_clusters = (size_mb * 1024 * 1024 / cluster_bytes).max(1);
         let mut clusters = Vec::with_capacity(num_clusters);
         clusters.resize_with(num_clusters, TTCluster::empty);
-        Self { clusters, age: AtomicU8::new(0) }
+        Self {
+            clusters,
+            age: AtomicU8::new(0),
+        }
     }
 
     pub fn resize(&mut self, size_mb: usize) {
@@ -147,7 +156,9 @@ impl TranspositionTable {
     }
 
     pub fn clear(&mut self) {
-        self.clusters.iter_mut().for_each(|c| *c = TTCluster::empty());
+        self.clusters
+            .iter_mut()
+            .for_each(|c| *c = TTCluster::empty());
         self.age.store(0, Ordering::Relaxed);
     }
 
@@ -199,7 +210,11 @@ impl TranspositionTable {
 
             let entry_depth = entry.depth as i32;
             if entry_depth < depth {
-                return ProbeResult { score: None, best_move: entry.mv, depth: entry_depth };
+                return ProbeResult {
+                    score: None,
+                    best_move: entry.mv,
+                    depth: entry_depth,
+                };
             }
 
             let score = Self::from_tt_score(entry.score as i32, ply);
@@ -217,7 +232,11 @@ impl TranspositionTable {
             };
         }
 
-        ProbeResult { score: None, best_move: Move::NONE, depth: -1 }
+        ProbeResult {
+            score: None,
+            best_move: Move::NONE,
+            depth: -1,
+        }
     }
 
     pub fn store(&self, key: u64, mv: Move, depth: i32, score: i32, bound: Bound, ply: i32) {
@@ -225,7 +244,8 @@ impl TranspositionTable {
         let verify = Self::verification_key(key);
         let age = self.age.load(Ordering::Relaxed);
         let depth_u8 = depth.clamp(0, u8::MAX as i32) as u8;
-        let stored_score = Self::to_tt_score(score, ply).clamp(i16::MIN as i32, i16::MAX as i32) as i16;
+        let stored_score =
+            Self::to_tt_score(score, ply).clamp(i16::MIN as i32, i16::MAX as i32) as i16;
 
         let mut target: Option<usize> = None;
         for i in 0..CLUSTER_SIZE {
@@ -254,9 +274,16 @@ impl TranspositionTable {
         });
 
         let existing = cluster.load(target);
-        let mv = if mv == Move::NONE && existing.verify == verify { existing.mv } else { mv };
+        let mv = if mv == Move::NONE && existing.verify == verify {
+            existing.mv
+        } else {
+            mv
+        };
 
-        cluster.store(target, TTEntry::new(verify, mv, stored_score, depth_u8, bound, age));
+        cluster.store(
+            target,
+            TTEntry::new(verify, mv, stored_score, depth_u8, bound, age),
+        );
     }
 
     pub fn hashfull(&self) -> usize {
@@ -273,5 +300,27 @@ impl TranspositionTable {
             }
         }
         if total == 0 { 0 } else { filled * 1000 / total }
+    }
+
+    #[cfg(feature = "prefetch")]
+    pub fn prefetch(&self, key: u64) {
+        let idx = self.index(key);
+
+        #[cfg(feature = "nightly")]
+        {
+            use std::hint::{Locality, prefetch_read};
+            prefetch_read(self.clusters.as_ptr().wrapping_add(idx), Locality::L1);
+        }
+
+        #[cfg(not(feature = "nightly"))]
+        #[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
+        unsafe {
+            #[cfg(target_arch = "x86")]
+            use std::arch::x86::{_MM_HINT_T0, _mm_prefetch};
+            #[cfg(target_arch = "x86_64")]
+            use std::arch::x86_64::{_MM_HINT_T0, _mm_prefetch};
+
+            _mm_prefetch(self.clusters.as_ptr().add(idx) as *const i8, _MM_HINT_T0);
+        }
     }
 }

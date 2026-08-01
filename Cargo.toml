@@ -13,6 +13,8 @@ rustflags = ["-C", "target-cpu=native"]
 default = ["embed-nnue", "avx2"]
 embed-nnue = []
 avx2 = []
+nightly = []
+prefetch = []
 
 [profile.release]
 opt-level = 3

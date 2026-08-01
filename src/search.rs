@@ -165,6 +165,9 @@ fn search<Node: NodeType>(
 
         search_data.make_move(mv);
 
+        #[cfg(feature = "prefetch")]
+        search_data.shared_data.tt.prefetch(search_data.board.hash());
+
         let mut check_extensions: i32 = 0;
         let mut lmr_reductions: i32 = 0;
         if search_data.board.in_check() {

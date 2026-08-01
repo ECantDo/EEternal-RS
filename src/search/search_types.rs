@@ -49,8 +49,12 @@ impl SharedData {
         Self {
             nodes: Counter::default(),
             stop: AtomicBool::new(false),
-            tt: TranspositionTable::new(16),
+            tt: TranspositionTable::new(TranspositionTable::DEFAULT_SIZE_MB),
         }
+    }
+
+    pub fn resize_tt(&mut self, tt_size: usize) {
+        self.tt = TranspositionTable::new(tt_size);
     }
 }
 

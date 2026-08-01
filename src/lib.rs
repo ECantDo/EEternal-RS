@@ -1,3 +1,4 @@
+#![cfg_attr(feature = "nightly", feature(hint_prefetch))]
 pub mod attacking;
 
 pub mod board;

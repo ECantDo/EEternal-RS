@@ -1,3 +1,4 @@
+
 fn main() {
     #[cfg(feature = "avx2")]
     println!("Using AVX2");
@@ -7,6 +8,9 @@ fn main() {
     println!("Attempting to load embedded nnue...");
     #[cfg(not(feature = "embed-nnue"))]
     println!("Not loading NNUE");
+
+    #[cfg(feature = "nightly")]
+    println!("Using `nightly`");
 
     eeternal_rs::initialize();
     eeternal_rs::uci::run_uci();

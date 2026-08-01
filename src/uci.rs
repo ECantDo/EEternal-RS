@@ -8,6 +8,7 @@ use crate::{
     types::{
         color::Color,
         move_list::MoveEntry,
+        tt::TranspositionTable,
         {piece::PieceType, square::Square},
     },
 };
@@ -20,7 +21,7 @@ pub fn run_uci() {
     let stdin = io::stdin();
     let mut board = Board::startpos();
     let mut search_thread: Option<std::thread::JoinHandle<()>> = None;
-    let shared_data = Arc::new(SharedData::new());
+    let mut shared_data: Arc<SharedData> = Arc::new(SharedData::new());
 
     for line in stdin.lock().lines() {
         let line = match line {
@@ -41,7 +42,11 @@ pub fn run_uci() {
             "uci" => {
                 println!("id name EeternalRS_V{}", env!("CARGO_PKG_VERSION"));
                 println!("id author ECanDo");
-                println!("option name EvalFile type string default <empty>");
+                // println!("option name EvalFile type string default <empty>");
+                println!(
+                    "option name Hash type spin default {} min 1 max 4096",
+                    TranspositionTable::DEFAULT_SIZE_MB
+                );
                 println!("uciok");
             }
             "isready" => println!("readyok"),
@@ -61,7 +66,7 @@ pub fn run_uci() {
                     handle_go(board_clone, &rest, shared_data);
                 }));
             }
-            "setoption" => handle_setoption(rest),
+            "setoption" => handle_setoption(rest, &mut shared_data),
             "stop" => shared_data.stop.store(true, Ordering::Relaxed),
             "quit" => {
                 shared_data.stop.store(true, Ordering::Relaxed);
@@ -206,11 +211,11 @@ fn parse_uci_move(board: &mut Board, uci: &str) -> Option<MoveEntry> {
         move_entry.mv().from() == from
             && move_entry.mv().to() == to
             && (!move_entry.mv().is_promotion()
-            || Some(move_entry.mv().promotion_piece_type()) == promo)
+                || Some(move_entry.mv().promotion_piece_type()) == promo)
     })
 }
 
-fn handle_setoption(rest: &str) {
+fn handle_setoption(rest: &str, shared_data: &mut Arc<SharedData>) {
     let Some(after_name) = rest.strip_prefix("name ") else {
         return;
     };
@@ -226,6 +231,16 @@ fn handle_setoption(rest: &str) {
         match crate::nnue::init_from_file(value) {
             Ok(()) => println!("info string Loaded NNUE network from {value}"),
             Err(e) => eprintln!("info string {e}"),
+        }
+    } else if name.eq_ignore_ascii_case("Hash") {
+        match Arc::get_mut(shared_data) {
+            Some(data) => {
+                let parsed_value: usize =
+                    value.parse().unwrap_or(TranspositionTable::DEFAULT_SIZE_MB);
+                data.resize_tt(parsed_value);
+                println!("info string resized TT to {} mb", parsed_value);
+            }
+            None => eprintln!("Cannot operate on `shared_data` at this time."),
         }
     }
 }
