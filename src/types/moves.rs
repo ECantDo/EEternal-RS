@@ -26,7 +26,7 @@ pub enum MoveFlag {
 }
 
 impl Move {
-    pub const None: Self = Self(0);
+    pub const NONE: Self = Self(0);
 
     pub const fn new(from: Square, to: Square, flag: MoveFlag) -> Self {
         Self((from as u16) | ((to as u16) << 6) | ((flag as u16) << 12))
@@ -95,6 +95,6 @@ impl Move {
 
 impl Default for Move {
     fn default() -> Self {
-        Move::None
+        Move::NONE
     }
 }

@@ -11,7 +11,7 @@ pub struct MoveEntry {
 impl MoveEntry {
     pub fn default() -> Self {
         Self {
-            mv: Move::None,
+            mv: Move::NONE,
             ordering_score: Score::ZERO,
         }
     }

@@ -153,7 +153,7 @@ impl Board {
     }
 
     pub fn update_move_threat(&mut self, mv: Move) {
-        debug_assert!(mv != Move::None);
+        debug_assert!(mv != Move::NONE);
         let occ = self.occupancies();
         let king_occ: [Bitboard; Color::NUM] = [
             occ ^ self.colored_pieces(Color::Black, PieceType::King),

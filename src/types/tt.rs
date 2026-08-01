@@ -80,7 +80,7 @@ impl TTEntry {
     fn empty() -> Self {
         Self {
             verify: 0,
-            mv: Move::None,
+            mv: Move::NONE,
             score: 0,
             depth: 0,
             flags: Flags::empty(),
@@ -217,7 +217,7 @@ impl TranspositionTable {
             };
         }
 
-        ProbeResult { score: None, best_move: Move::None, depth: -1 }
+        ProbeResult { score: None, best_move: Move::NONE, depth: -1 }
     }
 
     pub fn store(&self, key: u64, mv: Move, depth: i32, score: i32, bound: Bound, ply: i32) {
@@ -254,7 +254,7 @@ impl TranspositionTable {
         });
 
         let existing = cluster.load(target);
-        let mv = if mv == Move::None && existing.verify == verify { existing.mv } else { mv };
+        let mv = if mv == Move::NONE && existing.verify == verify { existing.mv } else { mv };
 
         cluster.store(target, TTEntry::new(verify, mv, stored_score, depth_u8, bound, age));
     }

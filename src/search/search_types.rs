@@ -27,7 +27,7 @@ pub struct RootMove {
 impl Default for RootMove {
     fn default() -> Self {
         Self {
-            mv: Move::None,
+            mv: Move::NONE,
             pv: RootPV::default(),
             score: Score::NONE,
         }
@@ -235,7 +235,7 @@ impl PrincipalVariationTable {
 impl Default for PrincipalVariationTable {
     fn default() -> Self {
         Self {
-            table: vec![[Move::None; MAX_PLY + 1]; MAX_PLY + 1].into_boxed_slice(),
+            table: vec![[Move::NONE; MAX_PLY + 1]; MAX_PLY + 1].into_boxed_slice(),
             len: [0; MAX_PLY + 1],
         }
     }
@@ -262,7 +262,7 @@ impl RootPV {
 impl Default for RootPV {
     fn default() -> Self {
         Self {
-            table: Box::new([Move::None; MAX_PLY + 1]),
+            table: Box::new([Move::NONE; MAX_PLY + 1]),
             len: 0,
         }
     }
@@ -296,7 +296,7 @@ impl Killers {
 impl Default for Killers {
     fn default() -> Self {
         Self {
-            killers: [[Move::None; 2]; MAX_PLY],
+            killers: [[Move::NONE; 2]; MAX_PLY],
         }
     }
 }

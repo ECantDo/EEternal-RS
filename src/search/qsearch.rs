@@ -75,7 +75,7 @@ pub fn qsearch<NODE: NodeType>(
 
     let mut best_score: i32 = stand_pat;
     let mut ordered_moves = OrderedMoves::new(&mut move_list);
-    ordered_moves.score_moves(search_data, Move::None, ply);
+    ordered_moves.score_moves(search_data, Move::NONE, ply);
 
     for move_entry in ordered_moves {
         let mv = move_entry.mv();

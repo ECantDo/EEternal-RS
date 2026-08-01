@@ -38,12 +38,6 @@ impl NodeType for NonPV {
 }
 
 pub fn start_search(search_data: &mut SearchData) -> Move {
-    let mut moves = search_data.board.generate_all_legal_moves::<AllMoves>();
-    debug_assert!(
-        !moves.is_empty(),
-        "start_search called on a position with no legal moves"
-    );
-
     let max_depth = match search_data.time_manager.limits() {
         Limits::Depth(depth) => depth as usize,
         _ => MAX_PLY - 1,
@@ -52,7 +46,7 @@ pub fn start_search(search_data: &mut SearchData) -> Move {
     search_data.shared_data.tt.new_search();
     search_data.nnue.reset(&search_data.board);
 
-    search_data.root_move.mv = Move::None;
+    search_data.root_move.mv = Move::NONE;
 
     search_data.pv_table.clear(0);
 
@@ -156,13 +150,13 @@ fn search<Node: NodeType>(
     // ============ Search ============
     let mut moves_searched: usize = 0;
     let mut best_score = -Score::INF;
-    let mut best_move = Move::None;
+    let mut best_move = Move::NONE;
     let alpha_orig = alpha;
 
     // Len of 32 since the average moves is ~35, and some moves in there are going to be non-quiet.
     //  And even less since the first 5 moves should almost always contain the best move (according
     //  to my engine). 32 seems like a good balance
-    let mut quiet_moves_tried: [Move; 32] = [Move::None; 32];
+    let mut quiet_moves_tried: [Move; 32] = [Move::NONE; 32];
     let mut quiet_moves_tried_len: usize = 0;
 
     for move_entry in ordered_moves {
