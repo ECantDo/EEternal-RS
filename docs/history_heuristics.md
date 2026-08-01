@@ -90,13 +90,8 @@ the possibility of cumulative bias. By my current testing, it is showing either 
 difference of 1 to 4 points (unknown if better or worse).
 
 The above test does suggest that there is a slight improvement, but take note of the margin of error (+/- 11.8 Elo), vs
-the predicted Elo delta (difference; +6.1). The Elo delta is roughly half of the margin of error, so in this case, 
+the predicted Elo delta (difference; +6.1). The Elo delta is roughly half of the margin of error, so in this case, I
+am going to be sticking with version `a`. I will, however, be looking at this again when I put in the effort of tuning
+my arbitrary values and get a better signal-to-noise ratio.
 
-```terminaloutput
-Score of EEternalRS-0_0_10c vs EEternalRS-0_0_10: 3120 - 2925 - 4089  [0.510] 10134
-...      EEternalRS-0_0_10c playing White: 2221 - 797 - 2051  [0.640] 5069
-...      EEternalRS-0_0_10c playing Black: 899 - 2128 - 2038  [0.379] 5065
-...      White vs Black: 4349 - 1696 - 4089  [0.631] 10134
-Elo difference: 6.7 +/- 5.2, LOS: 99.4 %, DrawRatio: 40.3 %
-SPRT: llr 2.95 (100.1%), lbound -2.94, ubound 2.94 - H1 was accepted
-```
+... yes I could run more games, but I only have so much CPU time to give, so we are going to leave it for now.
