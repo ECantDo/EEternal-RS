@@ -1,4 +1,5 @@
 use crate::{
+    settings::Settings,
     board::{Board, generate_moves::AllMoves},
     search::{
         search_types::{SearchData, SharedData},
@@ -8,7 +9,6 @@ use crate::{
     types::{
         color::Color,
         move_list::MoveEntry,
-        tt::TranspositionTable,
         {piece::PieceType, square::Square},
     },
 };
@@ -44,8 +44,10 @@ pub fn run_uci() {
                 println!("id author ECanDo");
                 // println!("option name EvalFile type string default <empty>");
                 println!(
-                    "option name Hash type spin default {} min 1 max 4096",
-                    TranspositionTable::DEFAULT_SIZE_MB
+                    "option name Hash type spin default {} min {} max {}",
+                    Settings::DEFAULT_TT_SIZE_MB,
+                    Settings::TT_MIN_SIZE,
+                    Settings::TT_MAX_SIZE
                 );
                 println!("uciok");
             }
@@ -235,8 +237,11 @@ fn handle_setoption(rest: &str, shared_data: &mut Arc<SharedData>) {
     } else if name.eq_ignore_ascii_case("Hash") {
         match Arc::get_mut(shared_data) {
             Some(data) => {
-                let parsed_value: usize =
-                    value.parse().unwrap_or(TranspositionTable::DEFAULT_SIZE_MB);
+                let parsed_value: usize = value.parse().unwrap_or(Settings::DEFAULT_TT_SIZE_MB);
+                if parsed_value < Settings::TT_MIN_SIZE || parsed_value > Settings::TT_MAX_SIZE {
+                    eprintln!("Invalid tt size");
+                    return;
+                }
                 data.resize_tt(parsed_value);
                 println!("info string resized TT to {} mb", parsed_value);
             }
