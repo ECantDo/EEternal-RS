@@ -168,9 +168,9 @@ fn search<Node: NodeType>(
         let mut check_extensions: i32 = 0;
         let mut lmr_reductions: i32 = 0;
         if search_data.board.in_check() {
-            // TODO: try double check extension on PV node
-            check_extensions += 1; // Check extensions
-        } else if depth >= 2 && moves_searched >= 2 {
+            check_extensions = 1; // Check extensions
+        }
+        if depth >= 2 && moves_searched >= 2 {
             // search the first 3 moves in full, then LMR
             // Only do LMR when not in check? (might be better)
             lmr_reductions = LMR_TABLE[depth as usize][moves_searched];
@@ -191,7 +191,13 @@ fn search<Node: NodeType>(
             // LMR re-search at full depth is the reduced beat alpha
             if lmr_reductions > 0 && score > alpha {
                 // If lmr > 0; we cannot be in check, so don't add in the check extension
-                score = -search::<NonPV>(search_data, -alpha - 1, -alpha, depth - 1, ply + 1);
+                score = -search::<NonPV>(
+                    search_data,
+                    -alpha - 1,
+                    -alpha,
+                    depth + check_extensions - 1,
+                    ply + 1,
+                );
             }
 
             // PVS re-search at full window if this move raised alpha, and we're on a PV node
