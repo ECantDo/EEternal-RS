@@ -134,7 +134,8 @@ fn search<Node: NodeType>(
     }
     // ============ Razoring ============
     let in_check = search_data.board.in_check();
-    if !in_check && depth <= 3 {
+    #[cfg(feature = "razoring")]
+    if !Node::PV && !in_check {
         let static_eval = search_data.evaluate();
         if static_eval < alpha - 400 - 250 * depth * depth {
             return qsearch::<NonPV>(search_data, alpha, beta, ply);

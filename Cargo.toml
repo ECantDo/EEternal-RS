@@ -15,6 +15,7 @@ embed-nnue = []
 avx2 = []
 nightly = []
 prefetch = []
+razoring = []
 
 [profile.release]
 opt-level = 3
