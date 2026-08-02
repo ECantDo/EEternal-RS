@@ -35,10 +35,10 @@ searched.
 
 ```rust
 if search_data.board.in_check() {
-if Node::PV && ply < 128 {
-check_extensions += 1;
-}
-check_extensions += 1; // Check extensions
+    if Node::PV && ply < 128 {
+        check_extensions += 1;
+    }
+    check_extensions += 1; // Check extensions
 }
 ```
 
@@ -67,7 +67,7 @@ due to the fact that your best checks are likely still going to be among the fir
 
 ```rust
 if depth > = 2 & & moves_searched >= 2 { // Importantly no `else` here vs the above
-lmr_reductions = LMR_TABLE[depth as usize][moves_searched];
+    lmr_reductions = LMR_TABLE[depth as usize][moves_searched];
 }
 ```
 
@@ -75,7 +75,6 @@ lmr_reductions = LMR_TABLE[depth as usize][moves_searched];
 Score of EEternalRS-0_1_1b vs EEternalRS-0_1_0: 446 - 318 - 549  [0.549] 1313
 Elo difference: 34.0 +/- 14.3, LOS: 100.0 %, DrawRatio: 41.8 %
 SPRT: llr 2.96 (100.4%), lbound -2.94, ubound 2.94 - H1 was accepted
-
 ```
 
 If you want free Elo, just drop your `else` check, when making your `is_in_check()` call. Furthermore, please do check
