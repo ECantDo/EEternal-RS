@@ -13,6 +13,27 @@ The C++ implementation is roughly around 2900 ELO on a single thread, based on a
 Qiles Corey, from the
 [Stockfish Discord](https://discord.gg/GWDRS3kU6R) (roughly 360 engines played, some of the top engines were included).
 My current goal is to get the engine back to where I left the C++ engine, then get to 3000+ ELO.
+---
+
+## Approx ELO
+
+| Version Number                                                          | Approx ELO      | VS                                                                                                                                      | VS Elo (Assumed) | WLD                                             |
+|-------------------------------------------------------------------------|-----------------|-----------------------------------------------------------------------------------------------------------------------------------------|------------------|-------------------------------------------------|
+| [0.1.1](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.1.1)     | **2904 +/- 14** | `Boychesser` (by: MinusKelvin, Analog Hors, Anon, Algorhythm, Daniel Ke), `Raphael2_1-avx2`                                             | 2772, 2739       | (613, 185, 202), (570, 185, 245)                |
+| [**0.1.0**](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.1.0) | **2773 +/- 14** | `EEternal Chess V3.2`, `Reckless 0.3.0`                                                                                                 | 2721, 2616       | (544, 269, 187), (547, 234, 219)                |
+| [0.0.9](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.0.9)     | **2696 +/- 14** | `drip leab` (by: JeffLegendPower, AtadOfAChad, Gonumen, KevinStriker), `Reckless 0.3.0`                                                 | 2602, 2616       | (614, 207, 179), (452, 356, 192)                |
+| [0.0.8](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.0.8)     | **2653 +/- 15** | `drip leab` (by: JeffLegendPower, AtadOfAChad, Gonumen, KevinStriker), `TinyHugeBot` (by: Popax21 & atpx8), `NNBot` (by: Jamie Whiting) | 2602, 2513, 2246 | (418, 261, 120), (519, 150, 131), (646, 67, 87) |
+| [0.0.7](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.0.7)     | **2607 +/- 10** | `EEternalRS_V0.0.6`, `drip leab` (by: JeffLegendPower, AtadOfAChad, Gonumen, KevinStriker)                                              | 2468, 2602       | (481, 43, 476), (317, 318, 365)                 |
+| [0.0.6](https://github.com/ECantDo/EEternal-RS/releases/tag/v0.0.6)     | **2468 +/- 11** | `EEternalRS_V0.0.5`                                                                                                                     | 2393             | (255, 42, 702)                                  |
+| [0.0.5](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.0.5)     | **2393 +/- 20** | `Game Tech Explained Bot` (by: Game Tech Explained), `TinyHugeBot` (by: Popax21 & atpx8)                                                | 1713, 2513       | (986, 6, 8), (222, 565, 212)                    |
+| [0.0.4](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.0.4)     | **1399 +/- 17** | `DLComp2` (by: DawnLamp8), `applemethod-orz` (by: RedBlackTree)                                                                         | 1387, 1085       | (526, 459, 15), (789, 94, 117)                  |
+| [0.0.3](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.0.3)     | **1371 +/- 16** | `applemethod-orz` (by: RedBlackTree)                                                                                                    | 1085             | Not Saved                                       |
+| [0.0.2](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.0.2)     | **1098 +/- 12** | `Turochamp` (Faithful) (by: P Rivero)                                                                                                   | 1026             | Not Saved                                       |
+| [0.0.1](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.0.1-RNG) | **1**           | N/A                                                                                                                                     | N/A              | N/A                                             |
+
+[Read more about the Elo Calculation here](docs/elo_calculation.md#computing-the-engine-elo).
+
+[Read more about the Engines used here](docs/elo_calculation.md#engines-used)
 
 ---
 
@@ -32,7 +53,6 @@ My current goal is to get the engine back to where I left the C++ engine, then g
 | 0.1.0          | Added a [History Heuristic](https://www.chessprogramming.org/History_Heuristic) for quiet moves [Read More](docs/history_heuristics.md).<br>I am happy to make this my 0.1 release, as it is winning against EEternal V3.2 (C++), in some short tests; and being my goal to match that engine, we have made it.                                                                                                                                                                                                                                                                                                                                                                    |
 | 0.1.1          | Many little tweaks happening here and there, some with [Extensions](docs/extensions.md), [Noisy History](docs/history_heuristics.md#noisy-history)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
 
-\* _[See below](#approx-elo) for the ELO improvement_
 
 **Why share *everything*?**<br>
 I am wanting to save a full history of changes that I have made, to track the Elo progression of my engine. Furthermore,
@@ -71,24 +91,3 @@ The C++ version's multithreading was bolted on early without much thought and be
 aims to get the architecture right, from the start. ... Ok there was thought behind adding it, but this was my first
 proper chess engine, so I also didn't know what I was doing.
 
----
-
-## Approx ELO
-
-| Version Number                                                          | Approx ELO      | VS                                                                                                                                      | VS Elo (Assumed) | WLD                                             |
-|-------------------------------------------------------------------------|-----------------|-----------------------------------------------------------------------------------------------------------------------------------------|------------------|-------------------------------------------------|
-| [0.1.1](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.1.1)     | **2904 +/- 14** | `Boychesser` (by: MinusKelvin, Analog Hors, Anon, Algorhythm, Daniel Ke), `Raphael2_1-avx2`                                             | 2772, 2739       | (613, 185, 202), (570, 185, 245)                |
-| [**0.1.0**](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.1.0) | **2773 +/- 14** | `EEternal Chess V3.2`, `Reckless 0.3.0`                                                                                                 | 2721, 2616       | (544, 269, 187), (547, 234, 219)                |
-| [0.0.9](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.0.9)     | **2696 +/- 14** | `drip leab` (by: JeffLegendPower, AtadOfAChad, Gonumen, KevinStriker), `Reckless 0.3.0`                                                 | 2602, 2616       | (614, 207, 179), (452, 356, 192)                |
-| [0.0.8](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.0.8)     | **2653 +/- 15** | `drip leab` (by: JeffLegendPower, AtadOfAChad, Gonumen, KevinStriker), `TinyHugeBot` (by: Popax21 & atpx8), `NNBot` (by: Jamie Whiting) | 2602, 2513, 2246 | (418, 261, 120), (519, 150, 131), (646, 67, 87) |
-| [0.0.7](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.0.7)     | **2607 +/- 10** | `EEternalRS_V0.0.6`, `drip leab` (by: JeffLegendPower, AtadOfAChad, Gonumen, KevinStriker)                                              | 2468, 2602       | (481, 43, 476), (317, 318, 365)                 |
-| [0.0.6](https://github.com/ECantDo/EEternal-RS/releases/tag/v0.0.6)     | **2468 +/- 11** | `EEternalRS_V0.0.5`                                                                                                                     | 2393             | (255, 42, 702)                                  |
-| [0.0.5](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.0.5)     | **2393 +/- 20** | `Game Tech Explained Bot` (by: Game Tech Explained), `TinyHugeBot` (by: Popax21 & atpx8)                                                | 1713, 2513       | (986, 6, 8), (222, 565, 212)                    |
-| [0.0.4](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.0.4)     | **1399 +/- 17** | `DLComp2` (by: DawnLamp8), `applemethod-orz` (by: RedBlackTree)                                                                         | 1387, 1085       | (526, 459, 15), (789, 94, 117)                  |
-| [0.0.3](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.0.3)     | **1371 +/- 16** | `applemethod-orz` (by: RedBlackTree)                                                                                                    | 1085             | Not Saved                                       |
-| [0.0.2](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.0.2)     | **1098 +/- 12** | `Turochamp` (Faithful) (by: P Rivero)                                                                                                   | 1026             | Not Saved                                       |
-| [0.0.1](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.0.1-RNG) | **1**           | N/A                                                                                                                                     | N/A              | N/A                                             |
-
-[Read more about the Elo Calculation here](docs/elo_calculation.md#computing-the-engine-elo).
-
-[Read more about the Engines used here](docs/elo_calculation.md#engines-used)
