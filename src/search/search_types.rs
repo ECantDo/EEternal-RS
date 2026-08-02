@@ -20,6 +20,7 @@ pub struct RootMove {
     pub mv: Move,
     pub pv: RootPV,
     pub score: i32,
+    pub previous_score: i32,
 }
 
 impl Default for RootMove {
@@ -28,6 +29,7 @@ impl Default for RootMove {
             mv: Move::NONE,
             pv: RootPV::default(),
             score: Score::NONE,
+            previous_score: Score::NONE,
         }
     }
 }

@@ -51,8 +51,14 @@ pub fn start_search(search_data: &mut SearchData) -> Move {
 
     search_data.pv_table.clear(0);
 
+    let mut alpha: i32 = -Score::INF;
+    let mut beta: i32 = Score::INF;
+
+    let delta: i32 = 100;
+
     for root_depth in 1..=max_depth {
-        let score = search::<Root>(search_data, -Score::INF, Score::INF, root_depth as i32, 0);
+        search_data.root_move.previous_score = search_data.root_move.score;
+        let score = search::<Root>(search_data, alpha, beta, root_depth as i32, 0);
 
         // A NONE-ish score means we bailed mid-search (time/stop). root_move
         // already reflects the best move found before the cutoff, so just
@@ -71,6 +77,15 @@ pub fn start_search(search_data: &mut SearchData) -> Move {
             || search_data.shared_data.stop.load(Ordering::Relaxed)
         {
             break;
+        }
+
+        // Do the first 3 searches without touching the windows
+        if root_depth >= 3 {
+            if score <= alpha {
+                alpha = (score - delta).max(-Score::INF);
+                beta = (alpha + delta).min(beta);
+            } else if score >= beta {
+            }
         }
 
         // Search to a depth of AT LEAST 6, and if the best move is mate, just return that move,
@@ -134,6 +149,7 @@ fn search<Node: NodeType>(
     }
     // ============ Razoring ============
     let in_check = search_data.board.in_check();
+
     #[cfg(feature = "razoring")]
     if !Node::PV && !in_check && alpha < 2048 && !tt_probe.best_move.is_quiet() {
         let static_eval = search_data.evaluate();
