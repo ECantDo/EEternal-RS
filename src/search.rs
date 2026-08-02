@@ -51,10 +51,8 @@ pub fn start_search(search_data: &mut SearchData) -> Move {
 
     search_data.pv_table.clear(0);
 
-    let mut alpha: i32 = -Score::INF;
-    let mut beta: i32 = Score::INF;
-
-    let delta: i32 = 100;
+    let alpha: i32 = -Score::INF;
+    let beta: i32 = Score::INF;
 
     for root_depth in 1..=max_depth {
         search_data.root_move.previous_score = search_data.root_move.score;
@@ -77,15 +75,6 @@ pub fn start_search(search_data: &mut SearchData) -> Move {
             || search_data.shared_data.stop.load(Ordering::Relaxed)
         {
             break;
-        }
-
-        // Do the first 3 searches without touching the windows
-        if root_depth >= 3 {
-            if score <= alpha {
-                alpha = (score - delta).max(-Score::INF);
-                beta = (alpha + delta).min(beta);
-            } else if score >= beta {
-            }
         }
 
         // Search to a depth of AT LEAST 6, and if the best move is mate, just return that move,
