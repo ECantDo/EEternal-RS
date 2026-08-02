@@ -144,46 +144,43 @@ impl super::Board {
             return; // can't castle out of check
         }
 
-        match stm {
-            Color::White => {
-                if self
-                    .board_state
-                    .castling
-                    .is_allowed(CastlingDirections::WhiteKingside)
-                    && (Bitboard(0x60) & occ).is_empty()
-                    && (Bitboard(0x60) & enemy_threats).is_empty()
-                {
-                    ml.push(Move::new(Square::E1, Square::G1, MoveFlag::CastleKingside));
-                }
-                if self
-                    .board_state
-                    .castling
-                    .is_allowed(CastlingDirections::WhiteQueenside)
-                    && (Bitboard(0x0E) & occ).is_empty()
-                    && (Bitboard(0x0C) & enemy_threats).is_empty()
-                {
-                    ml.push(Move::new(Square::E1, Square::C1, MoveFlag::CastleQueenside));
-                }
+        if stm == Color::White {
+            if self
+                .board_state
+                .castling
+                .is_allowed(CastlingDirections::WhiteKingside)
+                && (Bitboard(0x60) & occ).is_empty()
+                && (Bitboard(0x60) & enemy_threats).is_empty()
+            {
+                ml.push(Move::new(Square::E1, Square::G1, MoveFlag::CastleKingside));
             }
-            Color::Black => {
-                if self
-                    .board_state
-                    .castling
-                    .is_allowed(CastlingDirections::BlackKingside)
-                    && (Bitboard(0x6000000000000000) & occ).is_empty()
-                    && (Bitboard(0x6000000000000000) & enemy_threats).is_empty()
-                {
-                    ml.push(Move::new(Square::E8, Square::G8, MoveFlag::CastleKingside));
-                }
-                if self
-                    .board_state
-                    .castling
-                    .is_allowed(CastlingDirections::BlackQueenside)
-                    && (Bitboard(0x0E00000000000000) & occ).is_empty()
-                    && (Bitboard(0x0C00000000000000) & enemy_threats).is_empty()
-                {
-                    ml.push(Move::new(Square::E8, Square::C8, MoveFlag::CastleQueenside));
-                }
+            if self
+                .board_state
+                .castling
+                .is_allowed(CastlingDirections::WhiteQueenside)
+                && (Bitboard(0x0E) & occ).is_empty()
+                && (Bitboard(0x0C) & enemy_threats).is_empty()
+            {
+                ml.push(Move::new(Square::E1, Square::C1, MoveFlag::CastleQueenside));
+            }
+        } else if stm == Color::Black {
+            if self
+                .board_state
+                .castling
+                .is_allowed(CastlingDirections::BlackKingside)
+                && (Bitboard(0x6000000000000000) & occ).is_empty()
+                && (Bitboard(0x6000000000000000) & enemy_threats).is_empty()
+            {
+                ml.push(Move::new(Square::E8, Square::G8, MoveFlag::CastleKingside));
+            }
+            if self
+                .board_state
+                .castling
+                .is_allowed(CastlingDirections::BlackQueenside)
+                && (Bitboard(0x0E00000000000000) & occ).is_empty()
+                && (Bitboard(0x0C00000000000000) & enemy_threats).is_empty()
+            {
+                ml.push(Move::new(Square::E8, Square::C8, MoveFlag::CastleQueenside));
             }
         }
     }

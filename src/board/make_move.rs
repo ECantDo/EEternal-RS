@@ -9,10 +9,10 @@ use crate::{
         UP_DIR,
         bitboard::Bitboard,
         castling::{CASTLING_RIGHTS, castling_rook_squares},
+        color::Color,
         moves::{Move, MoveFlag},
         piece::{Piece, PieceType},
         square::Square,
-        color::Color,
     },
 };
 

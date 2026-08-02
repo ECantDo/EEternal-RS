@@ -16,11 +16,11 @@ use std::sync::{Arc, RwLock};
 use crate::{
     board::Board,
     types::{
-        castling::castling_rook_squares, moves::Move,
+        MAX_PLY, UP_DIR,
+        castling::castling_rook_squares,
+        moves::Move,
         piece::{Piece, PieceType},
         square::Square,
-        MAX_PLY,
-        UP_DIR,
     },
 };
 
@@ -72,8 +72,7 @@ impl NNUEParams {
     /// `loadFromPtr`/`memcpy` did implicitly.
     #[cfg(feature = "embed-nnue")]
     fn embedded() -> &'static Self {
-        static EMBEDDED: NNUEParams =
-            unsafe { transmute(*include_bytes!("nnue/768-128x2-1.bin")) };
+        static EMBEDDED: NNUEParams = unsafe { transmute(*include_bytes!("nnue/768-128x2-1.bin")) };
         &EMBEDDED
     }
 }
@@ -185,7 +184,7 @@ fn feature_index(piece: Piece, square: Square) -> usize {
 /// or a `.cargo/config.toml` `[build] rustflags`) to turn this on; otherwise
 /// you silently get the scalar path even on an AVX2 machine.
 mod forward {
-    use super::{feature_index, Accumulator, NNUEParams, HIDDEN_SIZE, QA, QB, SCALE};
+    use super::{Accumulator, HIDDEN_SIZE, NNUEParams, QA, QB, SCALE, feature_index};
     use crate::types::{color::Color, piece::Piece, square::Square};
 
     pub fn add_feature(acc: &mut Accumulator, params: &NNUEParams, piece: Piece, square: Square) {
@@ -231,7 +230,7 @@ mod forward {
     // ---- scalar fallback: portable, relies on LLVM auto-vectorization ----
     #[cfg(not(target_feature = "avx2"))]
     mod scalar {
-        use super::{Accumulator, NNUEParams, HIDDEN_SIZE, QA, QB, SCALE};
+        use super::{Accumulator, HIDDEN_SIZE, NNUEParams, QA, QB, SCALE};
         use crate::types::color::Color;
 
         pub fn add(acc: &mut Accumulator, params: &NNUEParams, idx: usize, midx: usize) {
@@ -292,7 +291,7 @@ mod forward {
     // but a non-issue on any CPU that actually has AVX2 (Sandy Bridge or newer).
     #[cfg(target_feature = "avx2")]
     mod avx2 {
-        use super::{Accumulator, NNUEParams, HIDDEN_SIZE, QA, QB, SCALE};
+        use super::{Accumulator, HIDDEN_SIZE, NNUEParams, QA, QB, SCALE};
         use crate::types::color::Color;
         use std::arch::x86_64::*;
 
