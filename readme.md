@@ -88,4 +88,6 @@ proper chess engine, so I also didn't know what I was doing.
 | [0.0.2](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.0.2)     | **1098 +/- 12** | `Turochamp` (Faithful) (by: P Rivero)                                                                                                   | 1026             | Not Saved                                       |
 | [0.0.1](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.0.1-RNG) | **1**           | N/A                                                                                                                                     | N/A              | N/A                                             |
 
-[Read more about the Elo Calculation here](docs/elo_calculation.md).
+[Read more about the Elo Calculation here](docs/elo_calculation.md#computing-the-engine-elo).
+
+[Read more about the Engines used here](docs/elo_calculation.md#engines-used)

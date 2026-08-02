@@ -253,3 +253,30 @@ $CUTE \
 echo ""
 echo "Gauntlet finished."
 ```
+
+---
+
+# Engines Used
+
+Since I have listed out some engines that I have competed against, I would like to properly link those engines, so that
+they are easier to find, for your convenience.
+
+| Engine Name             | Links                                                                                                                                                                                                                       |
+|-------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Turochamp (Faithful)    | [Seb Entry](https://github.com/SebLague/Tiny-Chess-Bot-Challenge-Results/blob/main/Bots/Bot_185.cs)                                                                                                                         |
+| Applemethod orz         | [Seb Entry](https://github.com/SebLague/Tiny-Chess-Bot-Challenge-Results/blob/main/Bots/Bot_70.cs)                                                                                                                          |
+| DLComp2                 | [Seb Entry](https://github.com/SebLague/Tiny-Chess-Bot-Challenge-Results/blob/main/Bots/Bot_590.cs)                                                                                                                         |
+| Game Tech Explained Bot | [Seb Entry](https://github.com/SebLague/Tiny-Chess-Bot-Challenge-Results/blob/main/Bots/Bot_266.cs) \| [YouTube Story](https://youtu.be/5vsLmM756LA) \| [GitHub Repo](https://github.com/GameTechExplained/Chess-Challenge) | 
+| TinyHugeBot             | [Seb Entry](https://github.com/SebLague/Tiny-Chess-Bot-Challenge-Results/blob/main/Bots/Bot_610.cs) \| [LiChess](https://lichess.org/@/TinyHugeBot) \| [GitHub Repo](https://github.com/Popax21/TinyHugeBot)                |
+| NNBot                   | [Seb Entry](https://github.com/SebLague/Tiny-Chess-Bot-Challenge-Results/blob/main/Bots/Bot_529.cs)                                                                                                                         |
+| Drip Leab               | [Seb Entry](https://github.com/SebLague/Tiny-Chess-Bot-Challenge-Results/blob/main/Bots/Bot_626.cs)                                                                                                                         |
+| Reckless                | [GitHub Repo](https://github.com/codedeliveryservice/Reckless/tree/main)                                                                                                                                                    |
+| EEternal Chess          | [GitHub Repo](https://github.com/ECantDo/EEternal-Chess/tree/1900ELO)                                                                                                                                                       |
+
+\*"Seb Entry" refers
+to [Sebastian Lague's](https://github.com/SebLague), [Tiny Chess Challenge](https://github.com/SebLague/Chess-Challenge),
+with the [Results Here](https://github.com/SebLague/Tiny-Chess-Bot-Challenge-Results).
+
+> Listings in no particular order, mainly just first come, first served
+
+> If you are to look at the code for any of these engines, look at `Game Tech Explained Bot`
