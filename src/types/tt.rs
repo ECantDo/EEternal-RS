@@ -138,8 +138,6 @@ pub struct TranspositionTable {
 }
 
 impl TranspositionTable {
-    pub const DEFAULT_SIZE_MB: usize = 16;
-
     pub fn new(size_mb: usize) -> Self {
         let cluster_bytes = size_of::<TTCluster>();
         let num_clusters = (size_mb * 1024 * 1024 / cluster_bytes).max(1);

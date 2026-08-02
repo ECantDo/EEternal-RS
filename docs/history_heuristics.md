@@ -24,6 +24,8 @@ there will be something cleaner to watch in the future...
 
 ---
 
+## Quiet History
+
 The first experiment I wanted to try with History Heuristics was clearing the history table at the start of every search
 instead of preserving it across searches, which is the more traditional approach.
 
@@ -75,9 +77,9 @@ It should also be noted at this time, there has not been any tuning for the cons
 true potential Elo improvement is unknown, but can still give some good insights while using values from thin air, but
 seem good.
 
-Next, let's introduce version `c`, this version has been modified from version `a` so that the History
-Heuristic is saved between searches. Everything else is the same. Some initial testing suggests that sharing (at the
-very least, the Quiet move) histories across a full game does not pose significant improvement.
+Next, let's introduce version `c`, this version has been modified from version `a` so that the History Heuristic is
+saved between searches. Everything else is the same. Some initial testing suggests that sharing (at the very least, the
+Quiet move) histories across a full game does not pose significant improvement.
 
 ```terminaloutput
 Score of EEternalRS-0_1_0c vs EEternalRS-0_1_0a: 619 - 584 - 797  [0.509] 2000
@@ -90,8 +92,34 @@ the possibility of cumulative bias. By my current testing, it is showing either 
 difference of 1 to 4 points (unknown if better or worse).
 
 The above test does suggest that there is a slight improvement, but take note of the margin of error (+/- 11.8 Elo), vs
-the predicted Elo delta (difference; +6.1). The Elo delta is roughly half of the margin of error, so in this case, I
-am going to be sticking with version `a`. I will, however, be looking at this again when I put in the effort of tuning
-my arbitrary values and get a better signal-to-noise ratio.
+the predicted Elo delta (difference; +6.1). The Elo delta is roughly half of the margin of error, so in this case, I am
+going to be sticking with version `a`. I will, however, be looking at this again when I put in the effort of tuning my
+arbitrary values and get a better signal-to-noise ratio.
 
 ... yes I could run more games, but I only have so much CPU time to give, so we are going to leave it for now.
+
+--- 
+
+## Noisy History
+
+Just like the Quiet History, I wanted to implement the Noisy History exactly the same, but on my first attempt, it seems
+I have screwed something up, and the engine crashed, but it also seems that my implementation was flawed.
+
+```terminaloutput
+Score of EEternalRS-0_1_1d vs EEternalRS-0_1_1c: 60 - 75 - 70  [0.463] 205
+Elo difference: -25.5 +/- 38.8, LOS: 9.8 %, DrawRatio: 34.1 %
+SPRT: llr -0.361 (-12.3%), lbound -2.94, ubound 2.94
+```
+\*[Version 0.1.1c](./extensions.md)
+
+Admittedly, I was a bit rushed to get the SPRT test running, so I wasn't too careful with any bugs I may or may not have
+added. So after actually fixing some of those bugs, like forgetting about en passant, let's see how it does.
+
+```terminaloutput
+Score of EEternalRS-0_1_1e vs EEternalRS-0_1_1c: 489 - 358 - 590  [0.546] 1437
+Elo difference: 31.8 +/- 13.8, LOS: 100.0 %, DrawRatio: 41.1 %
+SPRT: llr 2.97 (100.8%), lbound -2.94, ubound 2.94 - H1 was accepted
+```
+
+Much better. I decided to use the same approach as the quiet history, doing a full refresh of the history table
+for every search. But overall it is very similar to how Quiets were added.

@@ -1,18 +1,16 @@
-use crate::history::QuietHistory;
-use crate::nnue::NNUE;
-use crate::time_manager::Limits;
-use crate::types::MAX_PLY;
-use crate::types::tt::TranspositionTable;
 use crate::{
     board::Board,
+    history::{NoisyHistory, QuietHistory},
+    nnue::NNUE,
+    time_manager::Limits,
     time_manager::TimeManager,
-    types::{moves::Move, score::Score},
+    types::{MAX_PLY, moves::Move, score::Score, tt::TranspositionTable},
 };
-use std::sync::atomic::AtomicBool;
 use std::sync::{
     Arc, LazyLock,
-    atomic::{AtomicU64, Ordering},
+    atomic::{AtomicBool, AtomicU64, Ordering},
 };
+use crate::settings::Settings;
 
 // =================================================================================================
 // Root Move
@@ -49,7 +47,7 @@ impl SharedData {
         Self {
             nodes: Counter::default(),
             stop: AtomicBool::new(false),
-            tt: TranspositionTable::new(TranspositionTable::DEFAULT_SIZE_MB),
+            tt: TranspositionTable::new(Settings::DEFAULT_TT_SIZE_MB),
         }
     }
 
@@ -66,6 +64,7 @@ pub struct SearchData {
     pub completed_depth: usize,
     pub killers: Killers,
     pub nnue: NNUE,
+    pub noisy_history: NoisyHistory,
     pub pv_table: PrincipalVariationTable,
     pub quiet_history: QuietHistory,
     pub root_move: RootMove,
@@ -83,6 +82,7 @@ impl SearchData {
             completed_depth: 0,
             killers: Killers::default(),
             nnue,
+            noisy_history: NoisyHistory::default(),
             pv_table: PrincipalVariationTable::default(),
             quiet_history: QuietHistory::default(),
             root_move: RootMove::default(),

@@ -1,4 +1,5 @@
 use crate::board::generate_moves::AllMoves;
+use crate::history::noisy_key;
 use crate::search::move_ordering::OrderedMoves;
 use crate::search::qsearch::qsearch;
 use crate::search::search_types::LMR_TABLE;
@@ -153,11 +154,21 @@ fn search<Node: NodeType>(
     let mut best_move = Move::NONE;
     let alpha_orig = alpha;
 
-    // Len of 32 since the average moves is ~35, and some moves in there are going to be non-quiet.
-    //  And even less since the first 5 moves should almost always contain the best move (according
-    //  to my engine). 32 seems like a good balance
+    /*
+     * Len of 32 since the average moves is ~35, and some moves in there are going to be non-quiet.
+     *  And even less since the first 5 moves should almost always contain the best move (according
+     *  to my engine). 32 seems like a good balance
+     */
     let mut quiet_moves_tried: [Move; 32] = [Move::NONE; 32];
     let mut quiet_moves_tried_len: usize = 0;
+
+    /*
+     * Len of 16 since the max number of captures in a position is 15; 8 pawns, 2 rooks, 2 knights,
+     * 2 bishops, 1 queen; +1 king (kinda, but the king cant really be captured, but close enough)
+     * = 16 possible captures. Having a length of 8 would likely be fine too. (gonna start with 16).
+     */
+    let mut noisy_moves_tried: [Move; 16] = [Move::NONE; 16];
+    let mut noisy_moves_tried_len: usize = 0;
 
     for move_entry in ordered_moves {
         let mv = move_entry.mv();
@@ -166,7 +177,10 @@ fn search<Node: NodeType>(
         search_data.make_move(mv);
 
         #[cfg(feature = "prefetch")]
-        search_data.shared_data.tt.prefetch(search_data.board.hash());
+        search_data
+            .shared_data
+            .tt
+            .prefetch(search_data.board.hash());
 
         let mut check_extensions: i32 = 0;
         let mut lmr_reductions: i32 = 0;
@@ -243,14 +257,15 @@ fn search<Node: NodeType>(
                 alpha = score;
                 // Only need to check if alpha is better than beta when alpha changes
                 if alpha >= beta {
+                    let bonus = history_bonus(depth);
+                    let stm = search_data.board.side_to_move();
+                    let threats = search_data.board.attacks_by_color(!stm);
+
                     if is_quiet {
                         // Quiet Move History Heuristic
-                        let bonus = history_bonus(depth);
-                        let stm = search_data.board.side_to_move();
                         // threats = squares attacked by the OPPONENT of `stm` (the mover).
                         // Must match score_quiet()'s convention exactly, or update()/get() write
                         // and read different table slots for the same real position.
-                        let threats = search_data.board.attacks_by_color(!stm);
 
                         search_data.quiet_history.update(threats, stm, mv, bonus);
                         for &prev in &quiet_moves_tried[..quiet_moves_tried_len] {
@@ -259,6 +274,28 @@ fn search<Node: NodeType>(
 
                         // Killers
                         search_data.killers.append(ply, mv);
+                    } else {
+                        // if !is_quiet {
+                        let (piece, to_sq) = noisy_key(&search_data.board, mv, stm);
+
+                        search_data.noisy_history.update(
+                            threats,
+                            search_data.board.get_piece_on_square(mv.from()),
+                            to_sq,
+                            piece,
+                            bonus,
+                        );
+                        for &prev in &noisy_moves_tried[..noisy_moves_tried_len] {
+                            let (piece, to_sq) = noisy_key(&search_data.board, prev, stm);
+
+                            search_data.noisy_history.update(
+                                threats,
+                                search_data.board.get_piece_on_square(prev.from()),
+                                to_sq,
+                                piece,
+                                -bonus,
+                            );
+                        }
                     }
 
                     break;
@@ -270,6 +307,10 @@ fn search<Node: NodeType>(
             // If we end up > 32, Woah, complex position.
             quiet_moves_tried[quiet_moves_tried_len] = mv;
             quiet_moves_tried_len += 1;
+        }
+        if !is_quiet && noisy_moves_tried_len < 16 {
+            noisy_moves_tried[noisy_moves_tried_len] = mv;
+            noisy_moves_tried_len += 1;
         }
 
         // Update moves searched

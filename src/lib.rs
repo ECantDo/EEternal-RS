@@ -18,6 +18,7 @@ pub mod uci;
 pub mod utils;
 
 pub mod rays;
+pub mod settings;
 
 pub fn initialize() {
     attacking::initialize_lookups();

@@ -1,5 +1,5 @@
+use crate::history::noisy_key;
 use crate::types::move_list::MoveEntry;
-use crate::types::piece::PieceType;
 use crate::{
     search::search_types::SearchData,
     types::{move_list::MoveList, moves::Move},
@@ -10,6 +10,7 @@ pub struct OrderedMoves<'a> {
     idx: usize,
 }
 
+pub const TT_VALUE: i32 = 20_000_000;
 pub const CAPTURE_VALUE: i32 = 1_000_000;
 pub const KILLER_VALUE: i32 = 900_000;
 
@@ -23,9 +24,9 @@ impl<'a> OrderedMoves<'a> {
 
         for idx in 0..self.move_list.len() {
             let mv = self.move_list.get(idx).mv();
-            let score = if mv == tt_move {
+            let mut score: i32 = if mv == tt_move {
                 debug_assert!(mv != Move::NONE);
-                i32::MAX
+                TT_VALUE
             } else if mv.is_capture() {
                 CAPTURE_VALUE + search_data.board.see(mv)
             } else if mv == killers[0] {
@@ -35,6 +36,10 @@ impl<'a> OrderedMoves<'a> {
             } else {
                 score_quiet(search_data, mv, ply)
             };
+
+            if mv.is_capture() {
+                score += score_noisy(search_data, mv);
+            }
             self.move_list.set_score(idx, score);
         }
     }
@@ -83,4 +88,18 @@ fn score_quiet(search_data: &SearchData, mv: Move, ply: i32) -> i32 {
     // score += escape[pt] * <is threatened?>
 
     search_data.quiet_history.get(threats, my_side, mv)
+}
+
+fn score_noisy(search_data: &SearchData, mv: Move) -> i32 {
+    let my_side = search_data.board.side_to_move();
+    let threats = search_data.board.attacks_by_color(!my_side);
+
+    let (piece, to_sq) = noisy_key(&search_data.board, mv, search_data.board.side_to_move());
+
+    search_data.noisy_history.get(
+        threats,
+        search_data.board.get_piece_on_square(mv.from()),
+        to_sq,
+        piece,
+    )
 }
