@@ -272,6 +272,8 @@ they are easier to find, for your convenience.
 | Drip Leab               | [Seb Entry](https://github.com/SebLague/Tiny-Chess-Bot-Challenge-Results/blob/main/Bots/Bot_626.cs)                                                                                                                         |
 | Reckless                | [GitHub Repo](https://github.com/codedeliveryservice/Reckless/tree/main)                                                                                                                                                    |
 | EEternal Chess          | [GitHub Repo](https://github.com/ECantDo/EEternal-Chess/tree/1900ELO)                                                                                                                                                       |
+| Boychesser              | [Seb Entry](https://github.com/SebLague/Tiny-Chess-Bot-Challenge-Results/blob/main/Bots/Bot_614.cs) \| [GitHub Repo](https://github.com/analog-hors/Boychesser)                                                             |
+| Raphael                 | [GitHub Repo](https://github.com/Orbital-Web/Raphael)                                                                                                                                                                                                             |
 
 \*"Seb Entry" refers
 to [Sebastian Lague's](https://github.com/SebLague), [Tiny Chess Challenge](https://github.com/SebLague/Chess-Challenge),
