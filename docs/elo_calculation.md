@@ -222,7 +222,7 @@ date=$(date '+%Y-%m-%d-%H-%M-%S')
 
 CUTE="cutechess-cli"
 BOT_NAME="EEternalRS"
-BOT_VERSION="0_0_10"
+BOT_VERSION="0_1_0"
 
 # Add opponents here
 OPPONENTS=(
@@ -256,6 +256,40 @@ echo "Gauntlet finished."
 
 ---
 
+# CCRL Testing
+
+[CCRL](https://computerchess.org.uk/404/index.html) is one of the main chess engine Ratings lists, they have run some 2
+million games of chess, for 2900 engines, to give them a rating. Since these ratings are considered to be closer to
+their "true" rating, I can get my engine, using the same Time Control (2 min + 1 second increment), to get an even
+better guess as to where my engine lands in the ratings.
+
+It should also be noted, I am not affiliated with CCRL, and my testing is still an estimate, I have not gotten my engine
+on the list. I am just taking engines on the list, and using their same methodology; I am making my own independent
+tests to get a decent approximation of my engines Elo.
+
+Critically, to get the same time control for their engines, they have listed that they use `Stockfish 10` as a benchmark
+to help set the time control. To find the time, run the bench, and get the time it took to run the bench. Take the time
+Stockfish took to run, and divide it by `2054`. Now you can multiply your result by the desired time control, and that
+is now the time control that you are going to run your games. I get to run my games at `60+0.5s`.
+
+The same methodology still applies as above, the difference is the time control, and where I am getting my engines from;
+the opening book is the same. However, I am running fewer total games, 150 per engine (x2 for playing as both black and
+white), due to: A. Each game takes longer to play; and B. I am playing against more engines.
+
+I still use CCRL's published Elo as the baseline even in my fast `10+0.1` gauntlet games against these engines. The
+margin of error there is much larger and further from the truth, because CCRL's ratings were established at their own
+much slower official time control - at `10+0.1` these engines can't search anywhere near as deep as they did when CCRL
+rated them, so the assumed baseline is a weaker approximation than it is for the engines rated at TCs closer to yours.
+
+## Placement
+
+In the CCRL table, despite not actually being in the list, I have still included where the engine would have been placed
+if my engine got to be, in the list. I mainly just want to feel good about where I have managed to get with my engine,
+so it's going to be there. **Importantly**, this still doesn't relate to a proper testing so still take it with a grain
+of salt, this is an **_approximation_** based on a small sampling of engines.
+
+---
+
 # Engines Used
 
 Since I have listed out some engines that I have competed against, I would like to properly link those engines, so that
@@ -273,7 +307,8 @@ they are easier to find, for your convenience.
 | Reckless                | [GitHub Repo](https://github.com/codedeliveryservice/Reckless/tree/main)                                                                                                                                                    |
 | EEternal Chess          | [GitHub Repo](https://github.com/ECantDo/EEternal-Chess/tree/1900ELO)                                                                                                                                                       |
 | Boychesser              | [Seb Entry](https://github.com/SebLague/Tiny-Chess-Bot-Challenge-Results/blob/main/Bots/Bot_614.cs) \| [GitHub Repo](https://github.com/analog-hors/Boychesser)                                                             |
-| Raphael                 | [GitHub Repo](https://github.com/Orbital-Web/Raphael)                                                                                                                                                                                                             |
+| Raphael                 | [GitHub Repo](https://github.com/Orbital-Web/Raphael)                                                                                                                                                                       |
+| Stash                   | [GitLab Repo](https://gitlab.com/mhouppin/stash-bot)                                                                                                                                                                        |
 
 \*"Seb Entry" refers
 to [Sebastian Lague's](https://github.com/SebLague), [Tiny Chess Challenge](https://github.com/SebLague/Chess-Challenge),

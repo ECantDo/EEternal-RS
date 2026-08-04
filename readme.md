@@ -16,9 +16,9 @@ My current goal is to get the engine back to where I left the C++ engine, then g
 
 ---
 
-## Approx ELO
+## Approx Elo
 
-| Version Number                                                          | Approx ELO      | VS                                                                                                                                      | VS Elo (Assumed) | WLD                                             |
+| Version Number                                                          | Approx Elo      | VS                                                                                                                                      | VS Elo (Assumed) | WLD                                             |
 |-------------------------------------------------------------------------|-----------------|-----------------------------------------------------------------------------------------------------------------------------------------|------------------|-------------------------------------------------|
 | [0.1.1](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.1.1)     | **2904 +/- 14** | `Boychesser` (by: MinusKelvin, Analog Hors, Anon, Algorhythm, Daniel Ke), `Raphael2_1-avx2`                                             | 2772, 2739       | (613, 185, 202), (570, 185, 245)                |
 | [**0.1.0**](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.1.0) | **2773 +/- 14** | `EEternal Chess V3.2`, `Reckless 0.3.0`                                                                                                 | 2721, 2616       | (544, 269, 187), (547, 234, 219)                |
@@ -38,6 +38,18 @@ My current goal is to get the engine back to where I left the C++ engine, then g
 
 ---
 
+## Approx CCRL Blitz Elo
+
+| Tested Version | Approx Elo\*            | VS                                                          | WLD                                                         | Opponent CCRL Elo      |
+|----------------|-------------------------|-------------------------------------------------------------|-------------------------------------------------------------|------------------------|
+| 0.1.1          | **2943 +/- 18** \[#257] | `Reckless 0.4.0`, `Stash 24.0`, `Boychesser`, `Raphael 2.1` | (103, 93, 104), (126, 87, 87), (187, 54, 59), (202, 29, 69) | 2934, 2880, 2772, 2739 | 
+
+[Read more about CCRL Testing](docs/elo_calculation.md#ccrl-testing)
+
+\*[Placement](docs/elo_calculation.md#placement)
+
+---
+
 ## Feature History
 
 | Version Number | Feature(s) Added                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
@@ -53,7 +65,6 @@ My current goal is to get the engine back to where I left the C++ engine, then g
 | 0.0.9          | Added [Killer Moves](https://www.chessprogramming.org/Killer_Move). Killer moves are quiet (non-capturing) moves that previously caused a beta cutoff (`alpha >= beta`) at the same ply. Since they're often strong regardless of what led up to them, they get tried early when searching sibling branches. For example, if a move finds mate and the opponent doesn't block it, that same move is likely to still be strong against a lot of other responses.                                                                                                                                                                                                                    |
 | 0.1.0          | Added a [History Heuristic](https://www.chessprogramming.org/History_Heuristic) for quiet moves [Read More](docs/history_heuristics.md).<br>I am happy to make this my 0.1 release, as it is winning against EEternal V3.2 (C++), in some short tests; and being my goal to match that engine, we have made it.                                                                                                                                                                                                                                                                                                                                                                    |
 | 0.1.1          | Many little tweaks happening here and there, some with [Extensions](docs/extensions.md), [Noisy History](docs/history_heuristics.md#noisy-history)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
-
 
 **Why share *everything*?**<br>
 I am wanting to save a full history of changes that I have made, to track the Elo progression of my engine. Furthermore,
