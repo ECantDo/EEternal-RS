@@ -1,10 +1,10 @@
 use crate::{
-    settings::Settings,
     board::{Board, generate_moves::AllMoves},
     search::{
         search_types::{SearchData, SharedData},
         start_search,
     },
+    settings::Settings,
     time_manager::{Limits, TimeManager},
     types::{
         color::Color,
@@ -16,6 +16,7 @@ use std::{
     io::{self, BufRead, Write},
     sync::{Arc, atomic::Ordering},
 };
+use crate::search::PrintOutput;
 
 pub fn run_uci() {
     let stdin = io::stdin();
@@ -75,6 +76,10 @@ pub fn run_uci() {
                 break;
             }
             "d" => println!("{board}"),
+            "bench" => {
+                let args: Vec<&str> = rest.split_whitespace().collect();
+                crate::utils::bench::bench::<true>(&args);
+            }
             _ => {
                 eprintln!("Unknown option {}", line)
             } // ignore anything we don't handle yet (setoption, debug, etc.)
@@ -143,7 +148,7 @@ fn handle_go(mut board: Board, rest: &str, shared_data: Arc<SharedData>) {
     // TODO : Figure out overhead (guessing 15ms)
     search_data.time_manager = TimeManager::new(limits, board.full_move_number(), 15);
 
-    let mv = start_search(&mut search_data);
+    let mv = start_search::<PrintOutput>(&mut search_data);
     println!("bestmove {}", mv.to_uci());
     io::stdout().flush().unwrap();
 }

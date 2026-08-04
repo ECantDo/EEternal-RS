@@ -15,6 +15,20 @@ pub mod qsearch;
 pub mod search_types;
 pub mod see;
 
+pub trait DisplayOutput {
+    const DISPLAY: bool;
+}
+
+pub struct PrintOutput;
+impl DisplayOutput for PrintOutput {
+    const DISPLAY: bool = true;
+}
+
+pub struct NoOutput;
+impl DisplayOutput for NoOutput {
+    const DISPLAY: bool = false;
+}
+
 pub trait NodeType {
     const PV: bool;
     const ROOT: bool;
@@ -38,7 +52,7 @@ impl NodeType for NonPV {
     const ROOT: bool = false;
 }
 
-pub fn start_search(search_data: &mut SearchData) -> Move {
+pub fn start_search<Display: DisplayOutput>(search_data: &mut SearchData) -> Move {
     let max_depth = match search_data.time_manager.limits() {
         Limits::Depth(depth) => depth as usize,
         _ => MAX_PLY - 1,
@@ -62,13 +76,16 @@ pub fn start_search(search_data: &mut SearchData) -> Move {
         // already reflects the best move found before the cutoff, so just
         // report it and go home.
         if score.abs() >= Score::NONE || search_data.shared_data.stop.load(Ordering::Relaxed) {
-            println!("{}", search_data.to_uci_info());
+            if Display::DISPLAY {
+                println!("{}", search_data.to_uci_info());
+            }
             return search_data.root_move.mv;
         }
 
         search_data.completed_depth = root_depth;
-        println!("{}", search_data.to_uci_info());
-
+        if Display::DISPLAY {
+            println!("{}", search_data.to_uci_info());
+        }
         if search_data
             .time_manager
             .soft_limit_exceeded(&*search_data.shared_data)
