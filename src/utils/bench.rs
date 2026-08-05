@@ -61,7 +61,7 @@ const POSITIONS: &[&str] = &[
     "8/8/5pk1/5Nn1/R3r1P1/8/6K1/8 w - - 4 65",
 ];
 
-const DEFAULT_DEPTH: i32 = 12;
+const DEFAULT_DEPTH: i32 = 10;
 const DEFAULT_HASH: usize = 16;
 
 /// `PRETTY = true`  -> per-position breakdown, human readable
@@ -128,7 +128,7 @@ pub fn bench<const PRETTY: bool>(args: &[&str]) {
 
     if PRETTY {
         println!("{}", "-".repeat(50));
-        println!("{total_nodes:>15} {ms:>11}ms {nps:>15} N/s");
+        println!("{total_nodes:>15} {ms:>12}ms {nps:>15} N/s");
         println!("{}", "-".repeat(50));
     } else {
         println!("Bench: {total_nodes} nodes {nps} nps");
