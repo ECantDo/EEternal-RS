@@ -155,11 +155,13 @@ fn search<Node: NodeType>(
         }
     }
     let in_check = search_data.board.in_check();
+
     let static_eval = if in_check {
         -Score::INF
     } else {
         search_data.evaluate()
     };
+
 
     // =============================================================================================
     // Razoring
@@ -252,6 +254,19 @@ fn search<Node: NodeType>(
     for move_entry in ordered_moves {
         let mv = move_entry.mv();
         let is_quiet = mv.is_quiet();
+
+        // =========================================================================================
+        // Late move pruning
+        // Moves searched later are likely bad
+        if !Node::ROOT
+            && !in_check
+            && is_quiet
+            && best_score > -Score::MATE_IN_MAX
+            && !mv.is_promotion()
+            && (moves_searched as i32) >= 3 + depth * depth
+        {
+            continue;
+        }
 
         search_data.make_move(mv);
 
