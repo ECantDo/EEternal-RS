@@ -5,23 +5,23 @@ search in some way. Here, we will be exploring both types.
 
 ```rust
 for move_entry in ordered_moves {
-let mv = move_entry.mv();
-let is_quiet = mv.is_quiet();
-
-search_data.make_move(mv);
-
-let mut check_extensions: i32 = 0;
-let mut lmr_reductions: i32 = 0;
-if search_data.board.in_check() {
-check_extensions += 1; // Check extensions
-} else if depth > = 2 && moves_searched >= 2 {
-// search the first 3 moves in full, then LMR
-lmr_reductions = LMR_TABLE[depth as usize][moves_searched];
-}
-// ...
-let new_depth = depth + check_extensions - 1 - lmr_reductions;
-let score = - search::<PV>(search_data, - beta, - alpha, new_depth, ply + 1);
-//...
+    let mv = move_entry.mv();
+    let is_quiet = mv.is_quiet();
+    
+    search_data.make_move(mv);
+    
+    let mut check_extensions: i32 = 0;
+    let mut lmr_reductions: i32 = 0;
+    if search_data.board.in_check() {
+        check_extensions += 1; // Check extensions
+    } else if depth > = 2 && moves_searched >= 2 {
+        // search the first 3 moves in full, then LMR
+        lmr_reductions = LMR_TABLE[depth as usize][moves_searched];
+    }
+    // ...
+    let new_depth = depth + check_extensions - 1 - lmr_reductions;
+    let score = - search::<PV>(search_data, - beta, - alpha, new_depth, ply + 1);
+    //...
 }
 ```
 
@@ -66,7 +66,7 @@ Intuition would tell you to not do a search reduction when in check; However, th
 due to the fact that your best checks are likely still going to be among the first moves searched.
 
 ```rust
-if depth > = 2 & & moves_searched >= 2 { // Importantly no `else` here vs the above
+if depth >= 2 && moves_searched >= 2 { // Importantly no `else` here vs the above
     lmr_reductions = LMR_TABLE[depth as usize][moves_searched];
 }
 ```
