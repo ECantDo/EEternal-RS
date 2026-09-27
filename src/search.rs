@@ -154,16 +154,15 @@ fn search<Node: NodeType>(
             return score;
         }
     }
-    // ============ Razoring ============
     let in_check = search_data.board.in_check();
     let static_eval = if in_check {
         -Score::INF
-    } else if cfg!(feature = "razoring") {
-        search_data.evaluate()
     } else {
-        Score::NONE
+        search_data.evaluate()
     };
 
+    // =============================================================================================
+    // Razoring
     #[cfg(feature = "razoring")]
     if !Node::PV && !in_check && alpha < 2048 && !tt_probe.best_move.is_quiet() {
         if static_eval < alpha - 250 - 250 * depth * depth {
@@ -171,17 +170,27 @@ fn search<Node: NodeType>(
         }
     }
 
+    // =============================================================================================
+    // Reverse futility pruning
+    const RFP_MARGIN: i32 = 90;
+
+    if !Node::PV
+        && !in_check
+        && static_eval - RFP_MARGIN * depth >= beta
+        && depth <= 8
+        && beta.abs() < Score::MATE_IN_MAX
+    {
+        return lerp(static_eval, beta, 0.5);
+    }
+
+    // =============================================================================================
+    // Null move
     if cut_node
         && !in_check
         && depth >= 3
+        && (static_eval >= beta)
         && beta.abs() < Score::MATE_IN_MAX
         && search_data.board.has_non_pawn_material()
-		// TODO: Remove this god-awful sub-if check when `static_eval` is used somewhere else
-        && (if cfg!(feature = "razoring") {
-            static_eval
-        } else {
-            search_data.evaluate() // already not in check
-        } >= beta)
     {
         let r = 3 + depth / 3;
         search_data.board.make_null_move();
@@ -416,4 +425,8 @@ fn search<Node: NodeType>(
 /// like basically everything else, this needs tuning
 fn history_bonus(depth: i32) -> i32 {
     (depth * depth * 4).min(1600)
+}
+
+fn lerp(a: i32, b: i32, t: f32) -> i32 {
+    t.mul_add((b - a) as f32, a as f32) as i32
 }
