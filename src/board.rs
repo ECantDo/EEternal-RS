@@ -43,6 +43,14 @@ pub struct Board {
 }
 
 impl Board {
+    pub fn has_non_pawn_material(&self) -> bool {
+        let stm = self.side_to_move();
+        (self.color_bitboards[stm]
+            ^ self.colored_pieces(stm, PieceType::Pawn)
+            ^ self.colored_pieces(stm, PieceType::King))
+        .not_empty()
+    }
+
     pub fn get_piece_on_square(&self, square: Square) -> Piece {
         self.piece_squares[square]
     }

@@ -70,7 +70,7 @@ pub fn start_search<Display: DisplayOutput>(search_data: &mut SearchData) -> Mov
 
     for root_depth in 1..=max_depth {
         search_data.root_move.previous_score = search_data.root_move.score;
-        let score = search::<Root>(search_data, alpha, beta, root_depth as i32, 0, true);
+        let score = search::<Root>(search_data, alpha, beta, root_depth as i32, 0, false);
 
         // A NONE-ish score means we bailed mid-search (time/stop). root_move
         // already reflects the best move found before the cutoff, so just
@@ -113,7 +113,7 @@ fn search<Node: NodeType>(
     beta: i32,
     depth: i32,
     ply: i32,
-	cut_node: bool
+    cut_node: bool,
 ) -> i32 {
     debug_assert!(ply as usize <= MAX_PLY);
     debug_assert!(-Score::INF <= alpha && alpha < beta && beta <= Score::INF);
@@ -156,13 +156,52 @@ fn search<Node: NodeType>(
     }
     // ============ Razoring ============
     let in_check = search_data.board.in_check();
+    let static_eval = if in_check {
+        -Score::INF
+    } else if cfg!(feature = "razoring") {
+        search_data.evaluate()
+    } else {
+        Score::NONE
+    };
 
     #[cfg(feature = "razoring")]
     if !Node::PV && !in_check && alpha < 2048 && !tt_probe.best_move.is_quiet() {
-        let static_eval = search_data.evaluate();
         if static_eval < alpha - 250 - 250 * depth * depth {
             return qsearch::<NonPV>(search_data, alpha, beta, ply);
         }
+    }
+
+    if cut_node
+        && !in_check
+        && depth >= 3
+        && beta.abs() < Score::MATE_IN_MAX
+        && search_data.board.has_non_pawn_material()
+		// TODO: Remove this god-awful sub-if check when `static_eval` is used somewhere else
+        && (if cfg!(feature = "razoring") {
+            static_eval
+        } else {
+            search_data.evaluate() // already not in check
+        } >= beta)
+    {
+        let r = 3 + depth / 3;
+        search_data.board.make_null_move();
+        let score = -search::<NonPV>(search_data, -beta, -beta + 1, depth - r, ply + 1, false);
+        search_data.board.undo_null_move();
+
+        if score.abs() >= Score::NONE {
+            // search abort
+            return score;
+        }
+
+        if score >= beta {
+            // giving them a full turn doesn't matter -- can return
+            return if score >= Score::MATE_IN_MAX {
+                beta
+            } else {
+                score
+            };
+        }
+        // Otherwise we need a full search
     }
 
     // ============ Generate Moves ============
@@ -231,10 +270,18 @@ fn search<Node: NodeType>(
             // PV is true for Root
             // Assumed best move: give it a full search; there will never be an LMR here
             // (i.e. extensions will never be less than -1)
-            score = -search::<PV>(search_data, -beta, -alpha, new_depth, ply + 1, cut_node);
+            // Null-move should always be false for the PV line
+            score = -search::<PV>(search_data, -beta, -alpha, new_depth, ply + 1, false);
         } else {
             // Null-window search; just show move isn't better
-            score = -search::<NonPV>(search_data, -alpha - 1, -alpha, new_depth, ply + 1, cut_node);
+            score = -search::<NonPV>(
+                search_data,
+                -alpha - 1,
+                -alpha,
+                new_depth,
+                ply + 1,
+                lmr_reductions > 0 || !cut_node,
+            );
 
             // LMR re-search at full depth is the reduced beat alpha
             if lmr_reductions > 0 && score > alpha {
@@ -245,7 +292,7 @@ fn search<Node: NodeType>(
                     -alpha,
                     depth + check_extensions - 1,
                     ply + 1,
-					cut_node
+                    !cut_node,
                 );
             }
 
@@ -257,7 +304,7 @@ fn search<Node: NodeType>(
                     -alpha,
                     depth - 1 + check_extensions,
                     ply + 1,
-					cut_node
+                    false,
                 );
             }
         }
