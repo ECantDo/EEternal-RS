@@ -17,6 +17,38 @@ use crate::{
 };
 
 impl Board {
+    // =============================================================================================
+    // Null Make Move
+    // =============================================================================================
+
+    fn increment_stack(&mut self) {
+        self.half_move_number += 1;
+        self.board_state_stack.push(self.board_state);
+        self.board_state.hash_keys.toggle_side();
+
+        if self.en_passant() != Square::None {
+            self.board_state
+                .hash_keys
+                .toggle_en_passant(self.en_passant());
+            self.board_state.en_passant = Square::None;
+        }
+    }
+
+    pub fn make_null_move(&mut self) {
+        self.increment_stack();
+        self.board_state.plies_from_null = 0;
+        self.board_state.captured = Piece::None;
+    }
+
+    pub fn undo_null_move(&mut self) {
+        self.half_move_number -= 1;
+        self.board_state = self.board_state_stack.pop().unwrap();
+    }
+
+    // =============================================================================================
+    // Standard Make Move
+    // =============================================================================================
+
     pub fn make_move(&mut self, mv: Move) {
         let from = mv.from();
         let to = mv.to();

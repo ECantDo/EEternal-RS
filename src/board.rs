@@ -19,6 +19,7 @@ struct BoardState {
     captured: Piece,
     en_passant: Square,
     half_move_clock: u8, // For the 50 move rule
+	plies_from_null: u8,
     hash_keys: HashKeys,
     material: i32,
 

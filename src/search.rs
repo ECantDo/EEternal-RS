@@ -70,7 +70,7 @@ pub fn start_search<Display: DisplayOutput>(search_data: &mut SearchData) -> Mov
 
     for root_depth in 1..=max_depth {
         search_data.root_move.previous_score = search_data.root_move.score;
-        let score = search::<Root>(search_data, alpha, beta, root_depth as i32, 0);
+        let score = search::<Root>(search_data, alpha, beta, root_depth as i32, 0, true);
 
         // A NONE-ish score means we bailed mid-search (time/stop). root_move
         // already reflects the best move found before the cutoff, so just
@@ -113,6 +113,7 @@ fn search<Node: NodeType>(
     beta: i32,
     depth: i32,
     ply: i32,
+	cut_node: bool
 ) -> i32 {
     debug_assert!(ply as usize <= MAX_PLY);
     debug_assert!(-Score::INF <= alpha && alpha < beta && beta <= Score::INF);
@@ -230,10 +231,10 @@ fn search<Node: NodeType>(
             // PV is true for Root
             // Assumed best move: give it a full search; there will never be an LMR here
             // (i.e. extensions will never be less than -1)
-            score = -search::<PV>(search_data, -beta, -alpha, new_depth, ply + 1);
+            score = -search::<PV>(search_data, -beta, -alpha, new_depth, ply + 1, cut_node);
         } else {
             // Null-window search; just show move isn't better
-            score = -search::<NonPV>(search_data, -alpha - 1, -alpha, new_depth, ply + 1);
+            score = -search::<NonPV>(search_data, -alpha - 1, -alpha, new_depth, ply + 1, cut_node);
 
             // LMR re-search at full depth is the reduced beat alpha
             if lmr_reductions > 0 && score > alpha {
@@ -244,6 +245,7 @@ fn search<Node: NodeType>(
                     -alpha,
                     depth + check_extensions - 1,
                     ply + 1,
+					cut_node
                 );
             }
 
@@ -255,6 +257,7 @@ fn search<Node: NodeType>(
                     -alpha,
                     depth - 1 + check_extensions,
                     ply + 1,
+					cut_node
                 );
             }
         }
