@@ -18,10 +18,10 @@ struct BoardState {
     castling: Castling,
     captured: Piece,
     en_passant: Square,
-    half_move_clock: u8, // For the 50 move rule
-	plies_from_null: u8,
     hash_keys: HashKeys,
+    half_move_clock: u8, // For the 50 move rule
     material: i32,
+    plies_from_null: u32,
 
     checkers: Bitboard,
     pinned: [Bitboard; Color::NUM],
@@ -157,7 +157,9 @@ impl Board {
         }
         let current: u64 = self.board_state.hash_keys.zobrist();
         // let mut count: i32 = 1;
-        let lookback = (self.board_state.half_move_clock as usize).min(len - 1);
+        let lookback = (self.board_state.half_move_clock as usize)
+            .min(self.board_state.plies_from_null as usize)
+            .min(len - 1);
 
         let mut i = 1;
         while i <= lookback {

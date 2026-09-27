@@ -57,6 +57,8 @@ impl Board {
 
         self.board_state_stack.push(self.board_state);
 
+		self.board_state.plies_from_null += 1;
+
         // Clear old en passant square before anything else touches it
         if self.board_state.en_passant != Square::None {
             self.board_state
