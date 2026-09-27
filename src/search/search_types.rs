@@ -1,3 +1,5 @@
+use crate::settings::Settings;
+use crate::types::score::ScoreType;
 use crate::{
     board::Board,
     history::{NoisyHistory, QuietHistory},
@@ -6,11 +8,11 @@ use crate::{
     time_manager::TimeManager,
     types::{MAX_PLY, moves::Move, score::Score, tt::TranspositionTable},
 };
+use std::ops::{Index, IndexMut};
 use std::sync::{
     Arc, LazyLock,
     atomic::{AtomicBool, AtomicU64, Ordering},
 };
-use crate::settings::Settings;
 
 // =================================================================================================
 // Root Move
@@ -72,6 +74,7 @@ pub struct SearchData {
     pub root_move: RootMove,
     pub shared_data: Arc<SharedData>,
     pub time_manager: TimeManager,
+    pub stack: SearchStack,
 }
 
 impl SearchData {
@@ -90,6 +93,7 @@ impl SearchData {
             root_move: RootMove::default(),
             shared_data: shared,
             time_manager: TimeManager::new(Limits::Infinite, 0, 0),
+            stack: SearchStack::default(),
         }
     }
 
@@ -304,5 +308,58 @@ impl Default for Killers {
         Self {
             killers: [[Move::NONE; 2]; MAX_PLY],
         }
+    }
+}
+
+// =================================================================================================
+// Search Stack
+// =================================================================================================
+/// Per-ply data for the current search path, indexed by `ply` (as `i32`).
+///
+/// The first `STACK_PADDING` entries sit *before* ply 0, so looking back from near the root
+/// (e.g. `stack[ply - 4]` at ply 1) lands on a default entry instead of going out of bounds.
+/// Those padding entries are never written to, so they always hold their defaults (e.g.
+/// `Score::NONE` for `static_eval`), which reads as "no data".
+const STACK_PADDING: usize = 8;
+
+pub struct SearchStack {
+    data: [StackEntry; MAX_PLY + STACK_PADDING + 8],
+}
+
+#[derive(Copy, Clone)]
+pub struct StackEntry {
+    /// `Score::NONE` when there is no static eval (in check, or not searched yet)
+    pub static_eval: ScoreType,
+}
+
+impl Default for StackEntry {
+    fn default() -> Self {
+        Self {
+            static_eval: Score::NONE,
+        }
+    }
+}
+
+impl Default for SearchStack {
+    fn default() -> Self {
+        Self {
+            data: [StackEntry::default(); MAX_PLY + STACK_PADDING + 8],
+        }
+    }
+}
+
+impl Index<i32> for SearchStack {
+    type Output = StackEntry;
+
+    fn index(&self, ply: i32) -> &Self::Output {
+        debug_assert!(ply + STACK_PADDING as i32 >= 0);
+        &self.data[(ply + STACK_PADDING as i32) as usize]
+    }
+}
+
+impl IndexMut<i32> for SearchStack {
+    fn index_mut(&mut self, ply: i32) -> &mut Self::Output {
+        debug_assert!(ply + STACK_PADDING as i32 >= 0);
+        &mut self.data[(ply + STACK_PADDING as i32) as usize]
     }
 }
