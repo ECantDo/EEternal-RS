@@ -65,12 +65,43 @@ pub fn start_search<Display: DisplayOutput>(search_data: &mut SearchData) -> Mov
 
     search_data.pv_table.clear(0);
 
-    let alpha: i32 = -Score::INF;
-    let beta: i32 = Score::INF;
+    let mut prev_score: i32 = 0;
 
     for root_depth in 1..=max_depth {
         search_data.root_move.previous_score = search_data.root_move.score;
-        let score = search::<Root>(search_data, alpha, beta, root_depth as i32, 0, false);
+
+        // ============ Aspiration Windows ============
+        // Search a narrow window around the last score, widening on fail high/low.
+        // Shallow depths are too noisy, so they use the full window.
+        let mut delta = 25;
+        let (mut alpha, mut beta) = if root_depth >= 4 {
+            ((prev_score - delta).max(-Score::INF), (prev_score + delta).min(Score::INF))
+        } else {
+            (-Score::INF, Score::INF)
+        };
+
+        let score = loop {
+            let score = search::<Root>(search_data, alpha, beta, root_depth as i32, 0, false);
+
+            if score.abs() >= Score::NONE || search_data.shared_data.stop.load(Ordering::Relaxed) {
+                break score;
+            }
+
+            if score <= alpha {
+                beta = (alpha + beta) / 2;
+                alpha = (score - delta).max(-Score::INF);
+            } else if score >= beta {
+                beta = (score + delta).min(Score::INF);
+            } else {
+                break score;
+            }
+
+            delta += delta / 2;
+            if delta > 1000 {
+                alpha = -Score::INF;
+                beta = Score::INF;
+            }
+        };
 
         // A NONE-ish score means we bailed mid-search (time/stop). root_move
         // already reflects the best move found before the cutoff, so just
@@ -82,6 +113,7 @@ pub fn start_search<Display: DisplayOutput>(search_data: &mut SearchData) -> Mov
             return search_data.root_move.mv;
         }
 
+        prev_score = score;
         search_data.completed_depth = root_depth;
         if Display::DISPLAY {
             println!("{}", search_data.to_uci_info());
@@ -347,13 +379,17 @@ fn search<Node: NodeType>(
             best_move = mv;
 
             if Node::ROOT {
-                search_data.root_move.mv = mv;
-                search_data.root_move.score = score;
-                search_data
-                    .root_move
-                    .pv
-                    .commit_from_pv(&search_data.pv_table, 1);
-            } else if Node::PV {
+                // Only trust root moves that beat alpha: a fail-low score is just an upper bound.
+                if score > alpha {
+                    search_data.root_move.mv = mv;
+                    search_data.root_move.score = score;
+                    search_data
+                        .root_move
+                        .pv
+                        .commit_from_pv(&search_data.pv_table, 1);
+                }
+            } else if Node::PV && score > alpha {
+                // Below alpha the child may have been a NonPV null-window search, so row ply+1 is stale.
                 search_data.pv_table.update(ply as usize, mv);
             }
             // Only need to check if score is better than alpha, when the best score changes.
