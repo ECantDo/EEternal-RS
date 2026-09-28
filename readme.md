@@ -111,3 +111,12 @@ The C++ version's multithreading was bolted on early without much thought and be
 aims to get the architecture right, from the start. ... Ok there was thought behind adding it, but this was my first
 proper chess engine, so I also didn't know what I was doing.
 
+---
+
+## Use of AI
+
+My use of AI in this repo mainly boils down to helping update the readme after testing completes, and running my
+tests (SPRTs, gauntlets) for me. Commits where the AI did all the work are marked with a `Co-Authored-By` line.
+
+Outside the repository, I am mainly utilizing it to help find my old code in my C++ engine, for the features and how I
+did them before.
