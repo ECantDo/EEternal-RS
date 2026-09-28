@@ -309,6 +309,11 @@ they are easier to find, for your convenience.
 | Boychesser              | [Seb Entry](https://github.com/SebLague/Tiny-Chess-Bot-Challenge-Results/blob/main/Bots/Bot_614.cs) \| [GitHub Repo](https://github.com/analog-hors/Boychesser)                                                             |
 | Raphael                 | [GitHub Repo](https://github.com/Orbital-Web/Raphael)                                                                                                                                                                       |
 | Stash                   | [GitLab Repo](https://gitlab.com/mhouppin/stash-bot)                                                                                                                                                                        |
+| Wahoo                   | [GitHub Repo](https://github.com/spamdrew128/Wahoo)                                                                                                                                                                         |
+| Pounce                  | [GitHub Repo](https://github.com/0xflick/pounce)                                                                                                                                                                            |
+| StockNemo               | [GitHub Repo](https://github.com/TheBlackPlague/StockNemo)                                                                                                                                                                  |
+| Mantissa                | [GitHub Repo](https://github.com/jtheardw/mantissa)                                                                                                                                                                         |
+| Frozenight              | [GitHub Repo](https://github.com/MinusKelvin/frozenight)                                                                                                                                                                    |
 
 \*"Seb Entry" refers
 to [Sebastian Lague's](https://github.com/SebLague), [Tiny Chess Challenge](https://github.com/SebLague/Chess-Challenge),
