@@ -75,7 +75,10 @@ pub fn start_search<Display: DisplayOutput>(search_data: &mut SearchData) -> Mov
         // Shallow depths are too noisy, so they use the full window.
         let mut delta = 25;
         let (mut alpha, mut beta) = if root_depth >= 4 {
-            ((prev_score - delta).max(-Score::INF), (prev_score + delta).min(Score::INF))
+            (
+                (prev_score - delta).max(-Score::INF),
+                (prev_score + delta).min(Score::INF),
+            )
         } else {
             (-Score::INF, Score::INF)
         };
@@ -140,12 +143,12 @@ pub fn start_search<Display: DisplayOutput>(search_data: &mut SearchData) -> Mov
 }
 
 fn search<Node: NodeType>(
-    search_data: &mut SearchData,
-    mut alpha: i32,
-    beta: i32,
-    depth: i32,
-    ply: i32,
-    cut_node: bool,
+	search_data: &mut SearchData,
+	mut alpha: i32,
+	beta: i32,
+	mut depth: i32,
+	ply: i32,
+	cut_node: bool,
 ) -> i32 {
     debug_assert!(ply as usize <= MAX_PLY);
     debug_assert!(-Score::INF <= alpha && alpha < beta && beta <= Score::INF);
@@ -194,6 +197,10 @@ fn search<Node: NodeType>(
         search_data.evaluate()
     };
 
+    // IIR
+    if depth >= 4 && tt_probe.best_move == Move::NONE && (Node::PV || cut_node) {
+		depth -= 1;
+	}
 
     // =============================================================================================
     // Razoring
