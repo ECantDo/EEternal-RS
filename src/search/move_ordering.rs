@@ -33,7 +33,7 @@ impl<'a> OrderedMoves<'a> {
                 if see < 0 {
                     NEGATIVE_SEE_CAPTURE_VALUE + see
                 } else {
-                    CAPTURE_VALUE + see
+					CAPTURE_VALUE + see
                 }
             } else if mv == killers[0] {
                 KILLER_VALUE + 10
