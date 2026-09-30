@@ -5,12 +5,7 @@ use crate::{
     },
     board::Board,
     types::{
-        UP_DIR,
-        bitboard::Bitboard,
-        color::Color,
-        moves::Move,
-        piece::{Piece, PieceType},
-        square::Square,
+        UP_DIR, bitboard::Bitboard, color::Color, moves::Move, piece::PieceType, square::Square,
     },
 };
 
@@ -78,24 +73,28 @@ impl Board {
     /// recapturing with their least valuable attacker. Call this on the
     /// board *before* `mv` is made.
     ///
-    /// Returns 0 for non-captures.
+    /// Returns 0 for quiets
     pub fn see(&self, mv: Move) -> i32 {
+        // Castling will always be a safe move - native by the rules of chess
+        if mv.is_castling() {
+            return 0;
+        }
+
         let from = mv.from();
         let to = mv.to();
 
-        let captured = self.get_piece_on_square(to);
-        if captured == Piece::None && !mv.is_en_passant() {
-            return 0; // not a capture
-        }
+        let captured_type: PieceType = if mv.is_en_passant() {
+            PieceType::Pawn
+        } else {
+            self.get_piece_on_square(to).piece_type()
+        };
 
         let mut gain = [0i32; 32];
         let mut depth: usize = 0;
 
-        gain[0] = if mv.is_en_passant() {
-            see_value(PieceType::Pawn)
-        } else {
-            see_value(captured.piece_type())
-        };
+		if captured_type != PieceType::None {
+			gain[0] = see_value(captured_type)
+		}
 
         let mut occ = self.occupancies();
         occ.clear(from);

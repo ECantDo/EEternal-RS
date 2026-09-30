@@ -299,15 +299,15 @@ fn search<Node: NodeType>(
         let is_quiet = mv.is_quiet();
 
         // SEE Pruning
-        // if !Node::ROOT && best_score > -Score::MATE_IN_MAX // ah
-		// 	&& depth <= 8
-        // // Only near the leaves where these types of moves would be bad to look at
-        // {
-        //     let threshold = if is_quiet { -64 * depth } else { -20 * depth2 };
-        //     if search_data.board.see(mv) < threshold {
-        //         continue;
-        //     }
-        // }
+        if !Node::ROOT && best_score > -Score::MATE_IN_MAX // ah
+			&& depth <= 8
+        // Only near the leaves where these types of moves would be bad to look at
+        {
+            let threshold = if is_quiet { -64 * depth } else { -20 * depth2 };
+            if search_data.board.see(mv) < threshold {
+                continue;
+            }
+        }
 
         // =========================================================================================
         // Late move pruning
