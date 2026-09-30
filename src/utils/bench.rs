@@ -61,7 +61,7 @@ const POSITIONS: &[&str] = &[
     "8/8/5pk1/5Nn1/R3r1P1/8/6K1/8 w - - 4 65",
 ];
 
-const DEFAULT_DEPTH: i32 = 10;
+const DEFAULT_DEPTH: i32 = 14;
 const DEFAULT_HASH: usize = 16;
 
 /// `PRETTY = true`  -> per-position breakdown, human readable
