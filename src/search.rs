@@ -199,14 +199,16 @@ fn search<Node: NodeType>(
 
     // IIR
     if depth >= 4 && tt_probe.best_move == Move::NONE && (Node::PV || cut_node) {
-		depth -= 1;
-	}
+        depth -= 1;
+    }
+
+    let depth2 = depth * depth;
 
     // =============================================================================================
     // Razoring
     #[cfg(feature = "razoring")]
     if !Node::PV && !in_check && alpha < 2048 && !tt_probe.best_move.is_quiet() {
-        if static_eval < alpha - 250 - 250 * depth * depth {
+        if static_eval < alpha - 250 - 250 * depth2 {
             return qsearch::<NonPV>(search_data, alpha, beta, ply);
         }
     }
@@ -294,6 +296,17 @@ fn search<Node: NodeType>(
         let mv = move_entry.mv();
         let is_quiet = mv.is_quiet();
 
+        // SEE Pruning
+        // if !Node::ROOT && best_score > -Score::MATE_IN_MAX // ah
+		// 	&& depth <= 8
+        // // Only near the leaves where these types of moves would be bad to look at
+        // {
+        //     let threshold = if is_quiet { -64 * depth } else { -20 * depth2 };
+        //     if search_data.board.see(mv) < threshold {
+        //         continue;
+        //     }
+        // }
+
         // =========================================================================================
         // Late move pruning
         // Moves searched later are likely bad
@@ -302,7 +315,7 @@ fn search<Node: NodeType>(
             && is_quiet
             && best_score > -Score::MATE_IN_MAX
             && !mv.is_promotion()
-            && (moves_searched as i32) >= 3 + depth * depth
+            && (moves_searched as i32) >= 3 + depth2
         {
             continue;
         }
