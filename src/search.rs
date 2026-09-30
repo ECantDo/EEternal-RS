@@ -159,9 +159,11 @@ fn search<Node: NodeType>(
         search_data.pv_table.clear(ply as usize);
     }
 
-    if search_data.time_manager.check_time(search_data)
-        || search_data.shared_data.stop.load(Ordering::Relaxed)
-    {
+    // Once the hard limit trips, set stop so every other node bails out immediately too
+    if search_data.time_manager.check_time(search_data) {
+        search_data.shared_data.stop.store(true, Ordering::Relaxed);
+    }
+    if search_data.shared_data.stop.load(Ordering::Relaxed) {
         return Score::NONE;
     }
 
@@ -360,7 +362,10 @@ fn search<Node: NodeType>(
             );
 
             // LMR re-search at full depth is the reduced beat alpha
-            if lmr_reductions > 0 && score > alpha {
+            // An aborted search (|score| >= NONE) must never trigger a re-search
+            let aborted = score.abs() >= Score::NONE;
+
+            if !aborted && lmr_reductions > 0 && score > alpha {
                 // If lmr > 0; we cannot be in check, so don't add in the check extension
                 score = -search::<NonPV>(
                     search_data,
@@ -373,7 +378,7 @@ fn search<Node: NodeType>(
             }
 
             // PVS re-search at full window if this move raised alpha, and we're on a PV node
-            if Node::PV && score > alpha {
+            if Node::PV && score.abs() < Score::NONE && score > alpha {
                 score = -search::<PV>(
                     search_data,
                     -beta,
