@@ -490,10 +490,17 @@ fn search<Node: NodeType>(
     } else {
         Bound::Exact
     };
+    // On a fail low every move was an upper bound, so best_move is just the least-bad guess.
+    // Store NONE instead; store() then keeps whatever move was already in the entry.
+    let tt_move = if bound == Bound::Upper {
+        Move::NONE
+    } else {
+        best_move
+    };
     search_data
         .shared_data
         .tt
-        .store(hash, best_move, depth, best_score, bound, ply);
+        .store(hash, tt_move, depth, best_score, bound, ply);
 
     best_score
 }
