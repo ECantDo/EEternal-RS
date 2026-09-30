@@ -5,12 +5,12 @@ use crate::{
     },
     board::Board,
     types::{
+        UP_DIR,
         bitboard::Bitboard,
         color::Color,
         moves::Move,
         piece::{Piece, PieceType},
         square::Square,
-        UP_DIR,
     },
 };
 
@@ -130,6 +130,7 @@ impl Board {
             side = !side;
         }
 
+        depth -= 1;
         while depth > 0 {
             gain[depth - 1] = -(-gain[depth - 1]).max(gain[depth]);
             depth -= 1;
