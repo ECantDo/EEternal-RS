@@ -116,10 +116,7 @@ pub fn bench<const PRETTY: bool>(args: &[&str]) {
 		if PRETTY {
 			let ms = now.elapsed().as_millis();
 			let nps = node_count * 1000 / ms.max(1);
-			println!(
-				"{index:>3} {:>11} {ms:>12}ms {nps:>15} N/s",
-				node_count
-			);
+			println!("{index:>3} {:>11} {ms:>12}ms {nps:>15} N/s", node_count);
 		}
 	}
 

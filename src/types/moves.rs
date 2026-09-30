@@ -60,11 +60,15 @@ impl Move {
 		(self.0 >> 12) & 0b1000 != 0 // bit 3 of the flag nibble
 	}
 
+	pub const fn is_quiet_promotion(self) -> bool {
+		(self.0 >> 12) & 0b1100 == 0b1000
+	}
+
 	pub const fn is_castling(self) -> bool {
 		matches!(
-            self.flag(),
-            MoveFlag::CastleKingside | MoveFlag::CastleQueenside
-        )
+			self.flag(),
+			MoveFlag::CastleKingside | MoveFlag::CastleQueenside
+		)
 	}
 
 	pub const fn is_en_passant(self) -> bool {

@@ -246,7 +246,7 @@ fn parse_uci_move(board: &mut Board, uci: &str) -> Option<MoveEntry> {
 		move_entry.mv().from() == from
 			&& move_entry.mv().to() == to
 			&& (!move_entry.mv().is_promotion()
-			|| Some(move_entry.mv().promotion_piece_type()) == promo)
+				|| Some(move_entry.mv().promotion_piece_type()) == promo)
 	})
 }
 
