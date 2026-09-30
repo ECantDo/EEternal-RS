@@ -12,6 +12,7 @@ pub struct OrderedMoves<'a> {
 
 pub const TT_VALUE: i32 = 20_000_000;
 pub const CAPTURE_VALUE: i32 = 1_000_000;
+pub const NEGATIVE_SEE_CAPTURE_VALUE: i32 = 80_000;
 pub const KILLER_VALUE: i32 = 900_000;
 
 impl<'a> OrderedMoves<'a> {
@@ -28,7 +29,12 @@ impl<'a> OrderedMoves<'a> {
                 debug_assert!(mv != Move::NONE);
                 TT_VALUE
             } else if mv.is_capture() {
-                CAPTURE_VALUE + search_data.board.see(mv)
+                let see = search_data.board.see(mv);
+                if see < 0 {
+                    NEGATIVE_SEE_CAPTURE_VALUE + see
+                } else {
+                    CAPTURE_VALUE + see
+                }
             } else if mv == killers[0] {
                 KILLER_VALUE + 10
             } else if mv == killers[1] {
