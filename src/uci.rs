@@ -21,8 +21,11 @@ use crate::search::PrintOutput;
 pub fn run_uci() {
     let stdin = io::stdin();
     let mut board = Board::startpos();
-    let mut search_thread: Option<std::thread::JoinHandle<()>> = None;
     let mut shared_data: Arc<SharedData> = Arc::new(SharedData::new());
+
+    // Holds the SearchData when no search thread owns it.
+    let mut search_data: Option<SearchData> = Some(SearchData::new(Arc::clone(&shared_data)));
+    let mut search_thread: Option<std::thread::JoinHandle<SearchData>> = None;
 
     for line in stdin.lock().lines() {
         let line = match line {
@@ -53,23 +56,46 @@ pub fn run_uci() {
                 println!("uciok");
             }
             "isready" => println!("readyok"),
-            "ucinewgame" => board = Board::startpos(),
+            "ucinewgame" => {
+                board = Board::startpos();
+                if let Some(handle) = search_thread.take() {
+                    shared_data.stop.store(true, Ordering::Relaxed);
+                    let _ = handle.join();
+                }
+                // Fresh history/killers/PV for a new game.
+                search_data = Some(SearchData::new(Arc::clone(&shared_data)));
+            }
             "position" => handle_position(&mut board, rest),
             "go" => {
                 if let Some(handle) = search_thread.take() {
                     shared_data.stop.store(true, Ordering::Relaxed);
-                    let _ = handle.join(); // wait for the previous search to actually finish
+                    if let Ok(returned) = handle.join() {
+                        search_data = Some(returned);
+                    }
                 }
                 shared_data.stop.store(false, Ordering::Relaxed);
                 shared_data.nodes.reset();
+
+                let sd = search_data
+                    .take()
+                    .expect("search_data missing — a search must still be running");
                 let board_clone = board.clone();
-                let rest = rest.to_string();
-                let shared_data = Arc::clone(&shared_data);
+                let rest_owned = rest.to_string();
+
                 search_thread = Some(std::thread::spawn(move || {
-                    handle_go(board_clone, &rest, shared_data);
+                    handle_go(board_clone, &rest_owned, sd)
                 }));
             }
-            "setoption" => handle_setoption(rest, &mut shared_data),
+            "setoption" => {
+                if let Some(handle) = search_thread.take() {
+                    shared_data.stop.store(true, Ordering::Relaxed);
+                    let _ = handle.join();
+                }
+                // SearchData holds an Arc clone, so drop it for the Hash resize (Arc::get_mut)
+                search_data = None;
+                handle_setoption(rest, &mut shared_data);
+                search_data = Some(SearchData::new(Arc::clone(&shared_data)));
+            }
             "stop" => shared_data.stop.store(true, Ordering::Relaxed),
             "quit" => {
                 shared_data.stop.store(true, Ordering::Relaxed);
@@ -119,7 +145,7 @@ fn handle_position(board: &mut Board, rest: &str) {
     }
 }
 
-fn handle_go(mut board: Board, rest: &str, shared_data: Arc<SharedData>) {
+fn handle_go(mut board: Board, rest: &str, mut search_data: SearchData) -> SearchData {
     let parts: Vec<&str> = rest.split_whitespace().collect();
 
     if parts.len() >= 1 && parts[0].contains("perft") {
@@ -134,23 +160,25 @@ fn handle_go(mut board: Board, rest: &str, shared_data: Arc<SharedData>) {
             nodes = 0;
         }
         println!("Nodes: {} \t | {} ms", nodes, start.elapsed().as_millis());
-        return;
+        return search_data;
     }
 
     let limits = parse_limits(board.side_to_move(), &*parts);
 
     if matches!(limits, Limits::Infinite) {
-        return; // Can do inf, no way to stop
+        return search_data; // Can do inf, no way to stop
     }
 
-    let mut search_data = SearchData::new(Arc::from(shared_data));
     search_data.set_board(&board);
+    search_data.new_search();
     // TODO : Figure out overhead (guessing 15ms)
     search_data.time_manager = TimeManager::new(limits, board.full_move_number(), 15);
 
     let mv = start_search::<PrintOutput>(&mut search_data);
     println!("bestmove {}", mv.to_uci());
     io::stdout().flush().unwrap();
+
+    search_data
 }
 
 fn parse_limits(color: Color, tokens: &[&str]) -> Limits {

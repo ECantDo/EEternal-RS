@@ -97,6 +97,14 @@ impl SearchData {
         }
     }
 
+    pub fn new_search(&mut self) {
+        self.completed_depth = 0;
+        self.killers = Killers::default();
+        self.nnue.reset(&self.board);
+        self.pv_table.clear(0);
+        self.root_move = RootMove::default();
+    }
+
     pub fn evaluate(&mut self) -> i32 {
         // return self.board.evaluate();
         if self.nnue.is_active() {
