@@ -7,9 +7,6 @@ authors = ["ECanDo"]
 [dependencies]
 
 
-[build]
-rustflags = ["-C", "target-cpu=native"]
-
 [features]
 default = ["embed-nnue", "avx2"]
 embed-nnue = []
