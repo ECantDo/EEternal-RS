@@ -18,31 +18,55 @@ use crate::{
 
 // move_ordering.rs (or wherever ScoreType/NodeType-style traits live)
 pub trait GenType {
-	const CAPTURES_ONLY: bool;
+	/// Generate captures (including capture-promotions and en passant)
+	const CAPTURES: bool;
+	/// Generate non-captures (including quiet promotions and castling)
+	const QUIETS: bool;
 }
 
 pub struct AllMoves;
 impl GenType for AllMoves {
-	const CAPTURES_ONLY: bool = false;
+	const CAPTURES: bool = true;
+	const QUIETS: bool = true;
 }
 
 pub struct CapturesOnly;
 impl GenType for CapturesOnly {
-	const CAPTURES_ONLY: bool = true;
+	const CAPTURES: bool = true;
+	const QUIETS: bool = false;
+}
+
+pub struct QuietsOnly;
+impl GenType for QuietsOnly {
+	const CAPTURES: bool = false;
+	const QUIETS: bool = true;
 }
 
 impl super::Board {
 	pub fn generate_all_legal_moves<G: GenType>(&self) -> MoveList {
 		let mut ml = MoveList::new();
+		self.append_legal_moves::<G>(&mut ml);
+		ml
+	}
+
+	/// Appends the legal moves selected by `G` to `ml`
+	pub fn append_legal_moves<G: GenType>(&self, ml: &mut MoveList) {
 		let stm = self.side_to_move();
 		let occ = self.occupancies();
 		let own = self.get_color(stm);
 		let enemy = self.get_color(!stm);
 		let enemy_threats = self.board_state.threats_by[!stm];
 
+		// Squares a move may land on for this generation type
+		let gen_mask = match (G::CAPTURES, G::QUIETS) {
+			(true, true) => !own,
+			(true, false) => enemy,
+			(false, true) => !occ,
+			(false, false) => Bitboard(0),
+		};
+
 		let king_sq = self.king_square(stm);
-		let king_targets = if G::CAPTURES_ONLY { enemy } else { !own };
-		for to in get_king_attacks(king_sq) & !own & !enemy_threats & king_targets {
+		for to in get_king_attacks(king_sq) & !own & !enemy_threats & gen_mask {
 			let flag = if enemy.contains(to) {
 				MoveFlag::Capture
 			} else {
@@ -52,7 +76,7 @@ impl super::Board {
 		}
 
 		if self.checkers().is_multiple() {
-			return ml;
+			return;
 		}
 
 		let mut target = if self.checkers().not_empty() {
@@ -60,13 +84,11 @@ impl super::Board {
 		} else {
 			!own
 		};
-		if G::CAPTURES_ONLY {
-			target &= enemy;
-		}
+		target &= gen_mask;
 
 		let pinned = self.pinned(stm);
 
-		self.collect_pawn_moves::<G>(&mut ml, target, pinned);
+		self.collect_pawn_moves::<G>(ml, target, pinned);
 
 		for knight in self.colored_pieces(stm, PieceType::Knight) & !pinned {
 			for to in get_knight_attacks(knight) & target {
@@ -83,21 +105,19 @@ impl super::Board {
 		let rooks = self.colored_pieces(stm, PieceType::Rook);
 		let queens = self.colored_pieces(stm, PieceType::Queen);
 
-		self.collect_slider(&mut ml, target, bishops, pinned, king_sq, |sq| {
+		self.collect_slider(ml, target, bishops, pinned, king_sq, |sq| {
 			get_bishop_attacks(sq, occ)
 		});
-		self.collect_slider(&mut ml, target, rooks, pinned, king_sq, |sq| {
+		self.collect_slider(ml, target, rooks, pinned, king_sq, |sq| {
 			get_rook_attacks(sq, occ)
 		});
-		self.collect_slider(&mut ml, target, queens, pinned, king_sq, |sq| {
+		self.collect_slider(ml, target, queens, pinned, king_sq, |sq| {
 			get_queen_attacks(sq, occ)
 		});
 
-		if !G::CAPTURES_ONLY {
-			self.collect_castling(&mut ml);
+		if G::QUIETS {
+			self.collect_castling(ml);
 		}
-
-		ml
 	}
 
 	fn collect_slider<F: Fn(Square) -> Bitboard>(
@@ -135,7 +155,7 @@ impl super::Board {
 		}
 	}
 
-	fn collect_castling(&self, ml: &mut MoveList) {
+	pub(super) fn collect_castling(&self, ml: &mut MoveList) {
 		let stm = self.side_to_move();
 		let occ = self.occupancies();
 		let enemy_threats = self.board_state.threats_by[!stm];
@@ -199,7 +219,7 @@ impl super::Board {
 		let king_sq = self.king_square(stm);
 		let start_rank = PAWN_START[stm];
 
-		if !G::CAPTURES_ONLY {
+		if G::QUIETS {
 			// A pawn pinned along the king's file can still push straight ahead
 			// (the pin ray must be vertical if it shares a file with the king);
 			// any other pin direction forbids pushing at all.
@@ -230,6 +250,10 @@ impl super::Board {
 					}
 				}
 			}
+		}
+
+		if !G::CAPTURES {
+			return;
 		}
 
 		for from in pawns {

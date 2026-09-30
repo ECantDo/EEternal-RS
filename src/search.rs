@@ -1,6 +1,5 @@
-use crate::board::generate_moves::AllMoves;
 use crate::history::noisy_key;
-use crate::search::move_ordering::OrderedMoves;
+use crate::search::move_ordering::MovePicker;
 use crate::search::qsearch::qsearch;
 use crate::search::search_types::LMR_TABLE;
 use crate::{
@@ -258,19 +257,9 @@ fn search<Node: NodeType>(
 		// Otherwise we need a full search
 	}
 
-	// ============ Generate Moves ============
-	let mut moves = search_data.board.generate_all_legal_moves::<AllMoves>();
-
-	if moves.is_empty() {
-		// Draw/Mate check
-		if in_check {
-			return Score::mated_in(ply);
-		}
-		return 0;
-	}
-
-	let mut ordered_moves = OrderedMoves::new(&mut moves);
-	ordered_moves.score_moves(search_data, tt_probe.best_move, ply);
+	// ============ Move Picker ============
+	// Moves are generated in stages as they're needed; see MovePicker
+	let mut picker = MovePicker::new(tt_probe.best_move, search_data.killers.get(ply), ply);
 
 	// ============ Search ============
 	let mut moves_searched: usize = 0;
@@ -294,8 +283,7 @@ fn search<Node: NodeType>(
 	let mut noisy_moves_tried: [Move; 16] = [Move::NONE; 16];
 	let mut noisy_moves_tried_len: usize = 0;
 
-	for move_entry in ordered_moves {
-		let mv = move_entry.mv();
+	while let Some(mv) = picker.next(search_data) {
 		let is_quiet = mv.is_quiet();
 
 		// SEE Pruning
@@ -320,6 +308,7 @@ fn search<Node: NodeType>(
 			&& !mv.is_promotion()
 			&& (moves_searched as i32) >= 3 + depth2
 		{
+			picker.skip_quiets();
 			continue;
 		}
 
@@ -481,6 +470,16 @@ fn search<Node: NodeType>(
 
 		// Update moves searched
 		moves_searched += 1;
+	}
+
+	// Draw/Mate check: nothing was searched only when there are no legal moves, since every
+	// pruning above needs a searched move first (best_score > -MATE_IN_MAX).
+	// (Not `moves_searched == 0`: a cutoff on the first move breaks before it's counted)
+	if best_score == -Score::INF {
+		if in_check {
+			return Score::mated_in(ply);
+		}
+		return 0;
 	}
 
 	// ============ TT Store ============

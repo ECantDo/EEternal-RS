@@ -43,6 +43,16 @@ impl Move {
 		unsafe { std::mem::transmute(((self.0 >> 12) & 0xF) as u8) }
 	}
 
+	/// The raw 4 flag bits. Unlike `flag()`, this is safe for any value (6 and 7 aren't MoveFlags)
+	pub const fn flag_bits(self) -> u8 {
+		((self.0 >> 12) & 0xF) as u8
+	}
+
+	#[cfg(test)]
+	pub const fn from_raw(raw: u16) -> Self {
+		Self(raw)
+	}
+
 	pub const fn is_none(self) -> bool {
 		self.0 == 0
 	}
