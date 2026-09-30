@@ -1,5 +1,6 @@
 use crate::board::generate_moves::{AllMoves, CapturesOnly};
 use crate::types::move_list::MoveList;
+use crate::types::piece::PieceType;
 use crate::{
 	search::{
 		move_ordering::{CAPTURE_VALUE, OrderedMoves},
@@ -89,7 +90,13 @@ pub fn qsearch<NODE: NodeType>(
 			}
 
 			// Delta pruning: even winning this capture can't reach alpha.
-			let captured_value = search_data.board.get_piece_on_square(mv.to()).value().abs();
+			let captured_type: PieceType = if mv.is_en_passant() {
+				PieceType::Pawn
+			} else {
+				search_data.board.get_piece_on_square(mv.to()).piece_type()
+			};
+
+			let captured_value: i32 = captured_type.value();
 			if stand_pat + captured_value + DELTA_MARGIN < alpha {
 				continue;
 			}

@@ -302,7 +302,7 @@ fn search<Node: NodeType>(
 		if !Node::ROOT // Doing things at the root is bad
 			&& best_score > -Score::MATE_IN_MAX // ah
 			&& depth <= 8 // Only near the leaves where these types of moves would be bad to look at
-			&& !mv.is_quiet_promotion()
+			// && !mv.is_quiet_promotion() // Sprt failed
 		{
 			let threshold = if is_quiet { -64 * depth } else { -20 * depth2 };
 			if search_data.board.see(mv) < threshold {
