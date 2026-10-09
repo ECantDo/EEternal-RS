@@ -2,6 +2,7 @@ use crate::history::noisy_key;
 use crate::search::move_ordering::MovePicker;
 use crate::search::qsearch::qsearch;
 use crate::search::search_types::LMR_TABLE;
+use crate::types::score::is_valid;
 use crate::{
 	search::search_types::SearchData,
 	time_manager::Limits,
@@ -198,6 +199,20 @@ fn search<Node: NodeType>(
 		search_data.evaluate()
 	};
 
+	search_data.stack[ply].static_eval = if in_check { Score::NONE } else { static_eval };
+
+	let improvement = if in_check {
+		0
+	} else if is_valid(search_data.stack[ply - 2].static_eval) {
+		static_eval - search_data.stack[ply - 2].static_eval
+	} else if is_valid(search_data.stack[ply - 4].static_eval) {
+		static_eval - search_data.stack[ply - 4].static_eval
+	} else {
+		0
+	};
+
+	let improving: bool = improvement > 0;
+
 	// IIR
 	if depth >= 4 && tt_probe.best_move == Move::NONE && (Node::PV || cut_node) {
 		depth -= 1;
@@ -306,7 +321,7 @@ fn search<Node: NodeType>(
 			&& is_quiet
 			&& best_score > -Score::MATE_IN_MAX
 			&& !mv.is_promotion()
-			&& (moves_searched as i32) >= 3 + depth2
+			&& (moves_searched as i32) >= (3 + depth2) / (1 + !improving as i32)
 		{
 			picker.skip_quiets();
 			continue;
@@ -329,6 +344,11 @@ fn search<Node: NodeType>(
 			// search the first 3 moves in full, then LMR
 			// Only do LMR when not in check? (might be better)
 			lmr_reductions = LMR_TABLE[depth as usize][moves_searched];
+
+			// TODO: Try this
+			// if moves_searched >= 4 {
+			// 	lmr_reductions += !improving as i32;
+			// }
 		}
 
 		// ===================== SEARCH ====================

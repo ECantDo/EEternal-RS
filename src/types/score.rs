@@ -21,3 +21,7 @@ impl Score {
 		if score > 0 { moves } else { -moves }
 	}
 }
+
+pub const fn is_valid(score: ScoreType) -> bool {
+	score != Score::NONE
+}
