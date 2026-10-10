@@ -41,12 +41,20 @@ pub fn qsearch<NODE: NodeType>(
 	}
 
 	let in_check = search_data.board.in_check();
+	let stm = search_data.board.side_to_move();
 
 	let stand_pat: i32;
 	if in_check {
 		stand_pat = Score::mated_in(ply);
 	} else {
-		stand_pat = search_data.evaluate();
+		let raw_eval = search_data.evaluate();
+		// /32 failed SPRT (-33 with the fail-low fix), /64 passed
+		let correction: i32 = search_data
+			.pawn_correction_history
+			.get(stm, search_data.board.pawn_key())
+			/ 64;
+		stand_pat = (raw_eval + correction).clamp(-Score::MATE_IN_MAX + 1, Score::MATE_IN_MAX - 1);
+
 		if stand_pat >= beta {
 			return stand_pat;
 		}

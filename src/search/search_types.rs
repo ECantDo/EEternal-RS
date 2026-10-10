@@ -13,6 +13,7 @@ use std::sync::{
 	Arc, LazyLock,
 	atomic::{AtomicBool, AtomicU64, Ordering},
 };
+use crate::history::CorrectionHistory;
 
 // =================================================================================================
 // Root Move
@@ -66,6 +67,7 @@ impl SharedData {
 pub struct SearchData {
 	pub board: Board,
 	pub completed_depth: usize,
+	pub pawn_correction_history: CorrectionHistory,
 	pub killers: Killers,
 	pub nnue: NNUE,
 	pub noisy_history: NoisyHistory,
@@ -85,6 +87,7 @@ impl SearchData {
 		Self {
 			board,
 			completed_depth: 0,
+			pawn_correction_history: CorrectionHistory::default(),
 			killers: Killers::default(),
 			nnue,
 			noisy_history: NoisyHistory::default(),

@@ -192,11 +192,18 @@ fn search<Node: NodeType>(
 		}
 	}
 	let in_check = search_data.board.in_check();
+	let stm = search_data.board.side_to_move();
 
 	let static_eval = if in_check {
 		-Score::INF
 	} else {
-		search_data.evaluate()
+		let raw_eval = search_data.evaluate();
+		// /32 failed SPRT (-33 with the fail-low fix), /64 passed
+		let correction: i32 = search_data
+			.pawn_correction_history
+			.get(stm, search_data.board.pawn_key())
+			/ 64;
+		(raw_eval + correction).clamp(-Score::MATE_IN_MAX + 1, Score::MATE_IN_MAX - 1)
 	};
 
 	search_data.stack[ply].static_eval = if in_check { Score::NONE } else { static_eval };
@@ -304,8 +311,9 @@ fn search<Node: NodeType>(
 		// SEE Pruning
 		if !Node::ROOT // Doing things at the root is bad
 			&& best_score > -Score::MATE_IN_MAX // ah
-			&& depth <= 8 // Only near the leaves where these types of moves would be bad to look at
-			// && !mv.is_quiet_promotion() // Sprt failed
+			&& depth <= 8
+		// Only near the leaves where these types of moves would be bad to look at
+		// && !mv.is_quiet_promotion() // Sprt failed
 		{
 			let threshold = if is_quiet { -64 * depth } else { -20 * depth2 };
 			if search_data.board.see(mv) < threshold {
@@ -502,7 +510,8 @@ fn search<Node: NodeType>(
 		return 0;
 	}
 
-	// ============ TT Store ============
+	// =============================================================================================
+	// TT Store
 	let bound = if best_score >= beta {
 		Bound::Lower
 	} else if best_score <= alpha_orig {
@@ -521,6 +530,21 @@ fn search<Node: NodeType>(
 		.shared_data
 		.tt
 		.store(hash, tt_move, depth, best_score, bound, ply);
+
+	// =============================================================================================
+	// Update Pawn Correction History
+	// Use tt_move, not best_move: on a fail low best_move is only the least-bad move (often a
+	// capture), which would skip most of the negative updates. tt_move is NONE there.
+	if !in_check
+		&& (tt_move == Move::NONE || tt_move.is_quiet())
+		&& !(bound == Bound::Lower && best_score <= static_eval)
+		&& !(bound == Bound::Upper && best_score >= static_eval)
+	{
+		let bonus = (148 * depth * (best_score - static_eval) / 128).clamp(-4678, 2496);
+		search_data
+			.pawn_correction_history
+			.update(stm, search_data.board.pawn_key(), bonus);
+	}
 
 	best_score
 }

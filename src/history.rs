@@ -102,3 +102,33 @@ pub fn noisy_key(board: &Board, mv: Move, stm: Color) -> (PieceType, Square) {
 		(board.get_piece_on_square(mv.to()).piece_type(), mv.to())
 	}
 }
+
+// =================================================================================================
+// Correction History
+// =================================================================================================
+pub struct CorrectionHistory {
+	entries: Box<[[i16; Self::SIZE]; 2]>, // [stm][pawn_key & mask]
+}
+
+impl CorrectionHistory {
+	const SIZE: usize = 1 << 16;
+	const MASK: usize = Self::SIZE - 1;
+	const MAX_HISTORY: i32 = 14605;
+
+	pub fn get(&self, stm: Color, pawn_key: u64) -> i32 {
+		self.entries[stm][pawn_key as usize & Self::MASK] as i32
+	}
+
+	pub fn update(&mut self, stm: Color, pawn_key: u64, bonus: i32) {
+		let entry = &mut self.entries[stm][pawn_key as usize & Self::MASK];
+		apply_bonus::<{ Self::MAX_HISTORY }>(entry, bonus);
+	}
+}
+
+impl Default for CorrectionHistory {
+	fn default() -> Self {
+		Self {
+			entries: zeroed_box(),
+		}
+	}
+}
