@@ -314,6 +314,9 @@ they are easier to find, for your convenience.
 | StockNemo               | [GitHub Repo](https://github.com/TheBlackPlague/StockNemo)                                                                                                                                                                  |
 | Mantissa                | [GitHub Repo](https://github.com/jtheardw/mantissa)                                                                                                                                                                         |
 | Frozenight              | [GitHub Repo](https://github.com/MinusKelvin/frozenight)                                                                                                                                                                    |
+| Stormphrax              | [GitHub Repo](https://github.com/Ciekce/Stormphrax)                                                                                                                                                                         |
+| Avalanche               | [GitHub Repo](https://github.com/SnowballSH/Avalanche)                                                                                                                                                                      |
+| akimbo                  | [GitHub Repo](https://github.com/jw1912/akimbo)                                                                                                                                                                             |
 
 \*"Seb Entry" refers
 to [Sebastian Lague's](https://github.com/SebLague), [Tiny Chess Challenge](https://github.com/SebLague/Chess-Challenge),
