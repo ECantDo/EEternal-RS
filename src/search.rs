@@ -236,6 +236,7 @@ fn search<Node: NodeType>(
 	if !Node::PV
 		&& !in_check
 		&& static_eval - RFP_MARGIN * depth >= beta
+		// && static_eval - RFP_MARGIN * (depth - improving as i32) >= beta
 		&& depth <= 8
 		&& beta.abs() < Score::MATE_IN_MAX
 	{
@@ -346,9 +347,9 @@ fn search<Node: NodeType>(
 			lmr_reductions = LMR_TABLE[depth as usize][moves_searched];
 
 			// TODO: Try this
-			// if moves_searched >= 4 {
-			// 	lmr_reductions += !improving as i32;
-			// }
+			if moves_searched >= 4 {
+				lmr_reductions += !improving as i32;
+			}
 		}
 
 		// ===================== SEARCH ====================
