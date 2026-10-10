@@ -97,6 +97,10 @@ impl Board {
 		self.board_state.hash_keys.zobrist()
 	}
 
+	pub fn pawn_key(&self) -> u64 {
+		self.board_state.hash_keys.pawn
+	}
+
 	pub const fn material(&self) -> i32 {
 		self.board_state.material
 	}

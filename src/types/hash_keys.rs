@@ -1,8 +1,10 @@
 use crate::types::{castling::Castling, piece::Piece, square::Square, zobrist::ZOBRIST};
+use crate::types::piece::PieceType;
 
 #[derive(Clone, Copy, Default)]
 pub struct HashKeys {
 	pub zob: u64,
+	pub pawn: u64,
 }
 
 impl HashKeys {
@@ -13,6 +15,10 @@ impl HashKeys {
 	pub fn toggle(&mut self, piece: Piece, sq: Square) {
 		let pk = ZOBRIST.pieces[piece][sq];
 		self.zob ^= pk;
+		
+		if piece.piece_type() == PieceType::Pawn {
+			self.pawn ^= pk;
+		}
 	}
 
 	pub fn toggle_side(&mut self) {
