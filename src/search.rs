@@ -235,8 +235,7 @@ fn search<Node: NodeType>(
 
 	if !Node::PV
 		&& !in_check
-		&& static_eval - RFP_MARGIN * depth >= beta
-		// && static_eval - RFP_MARGIN * (depth - improving as i32) >= beta
+		&& static_eval - RFP_MARGIN * (depth - improving as i32) >= beta
 		&& depth <= 8
 		&& beta.abs() < Score::MATE_IN_MAX
 	{
