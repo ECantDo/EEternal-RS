@@ -46,7 +46,7 @@ pub fn run_uci() {
 			"uci" => {
 				println!("id name EeternalRS_V{}", env!("CARGO_PKG_VERSION"));
 				println!("id author ECanDo");
-				// println!("option name EvalFile type string default <empty>");
+				println!("option name EvalFile type string default <empty>");
 				println!(
 					"option name Hash type spin default {} min {} max {}",
 					Settings::DEFAULT_TT_SIZE_MB,
@@ -263,6 +263,13 @@ fn handle_setoption(rest: &str, shared_data: &mut Arc<SharedData>) {
 	let value = after_name[value_idx + " value ".len()..].trim();
 
 	if name.eq_ignore_ascii_case("EvalFile") {
+		// GUIs may send the default back, so treat it as "use the embedded net"
+		if value.is_empty() || value == "<empty>" {
+			if crate::nnue::try_init_embedded() {
+				println!("info string Using the embedded NNUE network");
+			}
+			return;
+		}
 		match crate::nnue::init_from_file(value) {
 			Ok(()) => println!("info string Loaded NNUE network from {value}"),
 			Err(e) => eprintln!("info string {e}"),
