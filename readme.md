@@ -18,6 +18,8 @@ My current goal is to get the engine back to where I left the C++ engine, then g
 
 ## Approx Elo
 
+Time control: `10+0.1` (10 seconds, plus 0.1 seconds per move), 16MB hash.
+
 | Version | Approx Elo | Games | Opponents | Opponent Elo | Results |
 |---------|------------|-------|-----------|--------------|---------|
 | [0.2.0](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.2.0) | **3402 +/- 19** | 1000 | 5 | 3094 to 3419 | [games](docs/elo_results.md#v0-2-0) |
@@ -36,7 +38,7 @@ My current goal is to get the engine back to where I left the C++ engine, then g
 | [0.1.4](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.1.4) | **3075 +/- 21** | 1000 | 5 | 2739 to 3219 | [games](docs/elo_results.md#v0-1-4) |
 | [0.1.3](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.1.3) | **3048 +/- 20** | 1000 | 5 | 2739 to 3219 | [games](docs/elo_results.md#v0-1-3) |
 | [0.1.2](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.1.2) | **2947 +/- 20** | 1000 | 5 | 2739 to 3219 | [games](docs/elo_results.md#v0-1-2) |
-| [0.1.1](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.1.1) | **2882 +/- 12** | 2886 | 19 | 2553 to 3049 | [games](docs/elo_results.md#v0-1-1) |
+| [0.1.1](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.1.1) | **2889 +/- 11** | 3216 | 19 | 2553 to 3049 | [games](docs/elo_results.md#v0-1-1) |
 | [**0.1.0**](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.1.0) | **2786 +/- 12** | 2960 | 16 | 2553 to 2934 | [games](docs/elo_results.md#v0-1-0) |
 | [0.0.9](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.0.9) | **2696 +/- 14** | 2000 | 2 | 2602 to 2616 | [games](docs/elo_results.md#v0-0-9) |
 | [0.0.8](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.0.8) | **2653 +/- 15** | 2399 | 3 | 2246 to 2602 | [games](docs/elo_results.md#v0-0-8) |
@@ -55,6 +57,8 @@ My current goal is to get the engine back to where I left the C++ engine, then g
 ---
 
 ## Approx CCRL Blitz Elo
+
+Time control: `60+0.1` (60 seconds, plus 0.1 seconds per move), 128MB hash.
 
 | Tested Version | Approx Elo\*            | VS                                                                                 | WLD                                                                   | Opponent CCRL Elo            |
 |----------------|-------------------------|------------------------------------------------------------------------------------|-----------------------------------------------------------------------|------------------------------|

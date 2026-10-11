@@ -5,6 +5,8 @@ assumed for that opponent, and the result from EEternalRS's side. `Estimate` is 
 would give on their own; the version's rating pools all of them, weighted by their error
 ([how](elo_calculation.md#computing-the-engine-elo)).
 
+Time control: every table on this page is from `10+0.1` games (10 seconds, plus 0.1 seconds per move), 16MB hash.
+
 <a id="v0-2-0"></a>
 
 ## 0.2.0
@@ -233,7 +235,7 @@ Approx Elo: **2947 +/- 20**, 1000 games
 
 ## 0.1.1
 
-Approx Elo: **2882 +/- 12**, 2886 games
+Approx Elo: **2889 +/- 11**, 3216 games
 
 | Opponent | Elo (Assumed) | Games | W | L | D | Score | Estimate |
 |----------|---------------|-------|---|---|---|-------|----------|
@@ -248,14 +250,14 @@ Approx Elo: **2882 +/- 12**, 2886 games
 | `Velvet 1.2.0` | 2765 | 64 | 34 | 17 | 13 | 63.3% | 2860 +/- 80 |
 | `Nalwald 1.11` | 2782 | 64 | 33 | 18 | 13 | 61.7% | 2865 +/- 79 |
 | `Zahak 6.2` | 2826 | 64 | 36 | 16 | 12 | 65.6% | 2938 +/- 82 |
-| `Stash 24.0` | 2880 | 23 | 10 | 9 | 4 | 52.2% | 2895 +/- 136 |
-| `Frozenight 3.0.0` | 2902 | 23 | 6 | 9 | 8 | 43.5% | 2856 +/- 120 |
-| `Velvet 2.0.0` | 2917 | 23 | 7 | 7 | 9 | 50.0% | 2917 +/- 115 |
-| `Reckless 0.4.0` | 2934 | 24 | 10 | 10 | 4 | 50.0% | 2934 +/- 133 |
-| `Mantissa 3.0.0` | 3015 | 23 | 5 | 13 | 5 | 32.6% | 2889 +/- 141 |
-| `Avalanche 1.2.0` | 3016 | 22 | 4 | 10 | 8 | 36.4% | 2919 +/- 124 |
-| `Koivisto 3.0` | 3020 | 22 | 7 | 13 | 2 | 36.4% | 2923 +/- 155 |
-| `Stash 27.0` | 3049 | 22 | 9 | 8 | 5 | 52.3% | 3065 +/- 134 |
+| `Stash 24.0` | 2880 | 64 | 26 | 24 | 14 | 51.6% | 2891 +/- 76 |
+| `Frozenight 3.0.0` | 2902 | 64 | 16 | 19 | 29 | 47.7% | 2886 +/- 64 |
+| `Velvet 2.0.0` | 2917 | 64 | 23 | 23 | 18 | 50.0% | 2917 +/- 73 |
+| `Reckless 0.4.0` | 2934 | 64 | 19 | 31 | 14 | 40.6% | 2868 +/- 78 |
+| `Mantissa 3.0.0` | 3015 | 64 | 20 | 27 | 17 | 44.5% | 2977 +/- 74 |
+| `Avalanche 1.2.0` | 3016 | 64 | 14 | 30 | 20 | 37.5% | 2927 +/- 73 |
+| `Koivisto 3.0` | 3020 | 64 | 24 | 32 | 8 | 43.8% | 2976 +/- 82 |
+| `Stash 27.0` | 3049 | 64 | 21 | 25 | 18 | 46.9% | 3027 +/- 73 |
 
 <a id="v0-1-0"></a>
 
