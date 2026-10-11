@@ -22,32 +22,32 @@ Time control: `10+0.1` (10 seconds, plus 0.1 seconds per move), 16MB hash.
 
 | Version | Approx Elo | Games | Opponents | Opponent Elo | Results |
 |---------|------------|-------|-----------|--------------|---------|
-| [0.2.0](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.2.0) | **3402 +/- 19** | 1000 | 5 | 3094 to 3419 | [games](docs/elo_results.md#v0-2-0) |
-| [0.1.16](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.1.16) | **3417 +/- 18** | 1000 | 5 | 3367 to 3485 | [games](docs/elo_results.md#v0-1-16) |
-| [0.1.15](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.1.15) | **3439 +/- 18** | 1000 | 5 | 3367 to 3485 | [games](docs/elo_results.md#v0-1-15) |
-| [0.1.14](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.1.14) | **3399 +/- 18** | 1000 | 5 | 3367 to 3485 | [games](docs/elo_results.md#v0-1-14) |
-| [0.1.13](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.1.13) | **3376 +/- 18** | 1000 | 5 | 3094 to 3362 | [games](docs/elo_results.md#v0-1-13) |
-| [0.1.12](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.1.12) | **3375 +/- 19** | 1000 | 5 | 3367 to 3485 | [games](docs/elo_results.md#v0-1-12) |
-| [0.1.11](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.1.11) | **3376 +/- 18** | 1000 | 5 | 3367 to 3485 | [games](docs/elo_results.md#v0-1-11) |
-| [0.1.10](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.1.10) | **3336 +/- 12** | 2408 | 27 | 3087 to 3525 | [games](docs/elo_results.md#v0-1-10) |
-| [0.1.9](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.1.9) | **3316 +/- 12** | 2472 | 28 | 3049 to 3525 | [games](docs/elo_results.md#v0-1-9) |
-| [0.1.8](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.1.8) | **3266 +/- 13** | 2216 | 24 | 3015 to 3438 | [games](docs/elo_results.md#v0-1-8) |
-| [0.1.7](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.1.7) | **3201 +/- 13** | 2320 | 26 | 2902 to 3391 | [games](docs/elo_results.md#v0-1-7) |
-| [0.1.6](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.1.6) | **3173 +/- 13** | 2280 | 25 | 2880 to 3367 | [games](docs/elo_results.md#v0-1-6) |
-| [0.1.5](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.1.5) | **3159 +/- 13** | 2216 | 24 | 2880 to 3362 | [games](docs/elo_results.md#v0-1-5) |
-| [0.1.4](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.1.4) | **3071 +/- 14** | 2149 | 23 | 2739 to 3270 | [games](docs/elo_results.md#v0-1-4) |
-| [0.1.3](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.1.3) | **3069 +/- 14** | 2152 | 23 | 2739 to 3244 | [games](docs/elo_results.md#v0-1-3) |
-| [0.1.2](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.1.2) | **2949 +/- 13** | 2216 | 24 | 2655 to 3219 | [games](docs/elo_results.md#v0-1-2) |
-| [0.1.1](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.1.1) | **2888 +/- 11** | 3280 | 20 | 2553 to 3087 | [games](docs/elo_results.md#v0-1-1) |
-| [**0.1.0**](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.1.0) | **2786 +/- 12** | 2960 | 16 | 2553 to 2934 | [games](docs/elo_results.md#v0-1-0) |
-| [0.0.9](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.0.9) | **2696 +/- 14** | 2000 | 2 | 2602 to 2616 | [games](docs/elo_results.md#v0-0-9) |
-| [0.0.8](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.0.8) | **2653 +/- 15** | 2399 | 3 | 2246 to 2602 | [games](docs/elo_results.md#v0-0-8) |
-| [0.0.7](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.0.7) | **2607 +/- 10** | 2000 | 2 | 2468 to 2602 | [games](docs/elo_results.md#v0-0-7) |
-| [0.0.6](https://github.com/ECantDo/EEternal-RS/releases/tag/v0.0.6) | **2468 +/- 11** | 999 | 1 | 2393 | [games](docs/elo_results.md#v0-0-6) |
-| [0.0.5](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.0.5) | **2393 +/- 20** | 1999 | 2 | 1713 to 2513 | [games](docs/elo_results.md#v0-0-5) |
-| [0.0.4](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.0.4) | **1399 +/- 17** | 2000 | 2 | 1085 to 1387 | [games](docs/elo_results.md#v0-0-4) |
-| [0.0.3](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.0.3) | **1371 +/- 16** | - | 1 | 1085 | [games](docs/elo_results.md#v0-0-3) |
-| [0.0.2](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.0.2) | **1098 +/- 12** | - | 1 | 1026 | [games](docs/elo_results.md#v0-0-2) |
+| [0.2.0](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.2.0) | **3402 +/- 19** | 1000 | 5 | 3094 to 3419 | [games](docs/elo_results.md#020) |
+| [0.1.16](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.1.16) | **3417 +/- 18** | 1000 | 5 | 3367 to 3485 | [games](docs/elo_results.md#0116) |
+| [0.1.15](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.1.15) | **3439 +/- 18** | 1000 | 5 | 3367 to 3485 | [games](docs/elo_results.md#0115) |
+| [0.1.14](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.1.14) | **3399 +/- 18** | 1000 | 5 | 3367 to 3485 | [games](docs/elo_results.md#0114) |
+| [0.1.13](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.1.13) | **3376 +/- 18** | 1000 | 5 | 3094 to 3362 | [games](docs/elo_results.md#0113) |
+| [0.1.12](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.1.12) | **3375 +/- 19** | 1000 | 5 | 3367 to 3485 | [games](docs/elo_results.md#0112) |
+| [0.1.11](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.1.11) | **3376 +/- 18** | 1000 | 5 | 3367 to 3485 | [games](docs/elo_results.md#0111) |
+| [0.1.10](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.1.10) | **3336 +/- 12** | 2408 | 27 | 3087 to 3525 | [games](docs/elo_results.md#0110) |
+| [0.1.9](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.1.9) | **3316 +/- 12** | 2472 | 28 | 3049 to 3525 | [games](docs/elo_results.md#019) |
+| [0.1.8](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.1.8) | **3266 +/- 13** | 2216 | 24 | 3015 to 3438 | [games](docs/elo_results.md#018) |
+| [0.1.7](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.1.7) | **3201 +/- 13** | 2320 | 26 | 2902 to 3391 | [games](docs/elo_results.md#017) |
+| [0.1.6](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.1.6) | **3173 +/- 13** | 2280 | 25 | 2880 to 3367 | [games](docs/elo_results.md#016) |
+| [0.1.5](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.1.5) | **3159 +/- 13** | 2216 | 24 | 2880 to 3362 | [games](docs/elo_results.md#015) |
+| [0.1.4](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.1.4) | **3071 +/- 14** | 2149 | 23 | 2739 to 3270 | [games](docs/elo_results.md#014) |
+| [0.1.3](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.1.3) | **3069 +/- 14** | 2152 | 23 | 2739 to 3244 | [games](docs/elo_results.md#013) |
+| [0.1.2](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.1.2) | **2949 +/- 13** | 2216 | 24 | 2655 to 3219 | [games](docs/elo_results.md#012) |
+| [0.1.1](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.1.1) | **2888 +/- 11** | 3280 | 20 | 2553 to 3087 | [games](docs/elo_results.md#011) |
+| [**0.1.0**](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.1.0) | **2786 +/- 12** | 2960 | 16 | 2553 to 2934 | [games](docs/elo_results.md#010) |
+| [0.0.9](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.0.9) | **2696 +/- 14** | 2000 | 2 | 2602 to 2616 | [games](docs/elo_results.md#009) |
+| [0.0.8](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.0.8) | **2653 +/- 15** | 2399 | 3 | 2246 to 2602 | [games](docs/elo_results.md#008) |
+| [0.0.7](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.0.7) | **2607 +/- 10** | 2000 | 2 | 2468 to 2602 | [games](docs/elo_results.md#007) |
+| [0.0.6](https://github.com/ECantDo/EEternal-RS/releases/tag/v0.0.6) | **2468 +/- 11** | 999 | 1 | 2393 | [games](docs/elo_results.md#006) |
+| [0.0.5](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.0.5) | **2393 +/- 20** | 1999 | 2 | 1713 to 2513 | [games](docs/elo_results.md#005) |
+| [0.0.4](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.0.4) | **1399 +/- 17** | 2000 | 2 | 1085 to 1387 | [games](docs/elo_results.md#004) |
+| [0.0.3](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.0.3) | **1371 +/- 16** | - | 1 | 1085 | [games](docs/elo_results.md#003) |
+| [0.0.2](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.0.2) | **1098 +/- 12** | - | 1 | 1026 | [games](docs/elo_results.md#002) |
 | [0.0.1](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.0.1-RNG) | **1** | - | - | - | - |
 
 [Read more about the Elo Calculation here](docs/elo_calculation.md#computing-the-engine-elo)
