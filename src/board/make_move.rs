@@ -386,7 +386,7 @@ impl Board {
 	}
 }
 
-fn attack_fn_for(color: Color, piece_type: PieceType) -> (fn(Square, Bitboard) -> Bitboard) {
+fn attack_fn_for(color: Color, piece_type: PieceType) -> fn(Square, Bitboard) -> Bitboard {
 	match piece_type {
 		PieceType::Pawn => {
 			if color == Color::White {

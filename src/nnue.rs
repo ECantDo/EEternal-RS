@@ -297,32 +297,40 @@ mod forward {
 
 		#[target_feature(enable = "avx2")]
 		unsafe fn add_half(half: &mut [i16; HIDDEN_SIZE], weights: &[i16; HIDDEN_SIZE]) {
-			for i in (0..HIDDEN_SIZE).step_by(16) {
-				let acc = _mm256_loadu_si256(half.as_ptr().add(i) as *const __m256i);
-				let w = _mm256_loadu_si256(weights.as_ptr().add(i) as *const __m256i);
-				let sum = _mm256_add_epi16(acc, w);
-				_mm256_storeu_si256(half.as_mut_ptr().add(i) as *mut __m256i, sum);
+			unsafe {
+				for i in (0..HIDDEN_SIZE).step_by(16) {
+					let acc = _mm256_loadu_si256(half.as_ptr().add(i) as *const __m256i);
+					let w = _mm256_loadu_si256(weights.as_ptr().add(i) as *const __m256i);
+					let sum = _mm256_add_epi16(acc, w);
+					_mm256_storeu_si256(half.as_mut_ptr().add(i) as *mut __m256i, sum);
+				}
 			}
 		}
 
 		#[target_feature(enable = "avx2")]
 		unsafe fn sub_half(half: &mut [i16; HIDDEN_SIZE], weights: &[i16; HIDDEN_SIZE]) {
-			for i in (0..HIDDEN_SIZE).step_by(16) {
-				let acc = _mm256_loadu_si256(half.as_ptr().add(i) as *const __m256i);
-				let w = _mm256_loadu_si256(weights.as_ptr().add(i) as *const __m256i);
-				let diff = _mm256_sub_epi16(acc, w);
-				_mm256_storeu_si256(half.as_mut_ptr().add(i) as *mut __m256i, diff);
+			unsafe {
+				for i in (0..HIDDEN_SIZE).step_by(16) {
+					let acc = _mm256_loadu_si256(half.as_ptr().add(i) as *const __m256i);
+					let w = _mm256_loadu_si256(weights.as_ptr().add(i) as *const __m256i);
+					let diff = _mm256_sub_epi16(acc, w);
+					_mm256_storeu_si256(half.as_mut_ptr().add(i) as *mut __m256i, diff);
+				}
 			}
 		}
 
 		pub unsafe fn add(acc: &mut Accumulator, params: &NNUEParams, idx: usize, midx: usize) {
-			add_half(&mut acc.white, &params.input_weights[idx]);
-			add_half(&mut acc.black, &params.input_weights[midx]);
+			unsafe {
+				add_half(&mut acc.white, &params.input_weights[idx]);
+				add_half(&mut acc.black, &params.input_weights[midx]);
+			}
 		}
 
 		pub unsafe fn remove(acc: &mut Accumulator, params: &NNUEParams, idx: usize, midx: usize) {
-			sub_half(&mut acc.white, &params.input_weights[idx]);
-			sub_half(&mut acc.black, &params.input_weights[midx]);
+			unsafe {
+				sub_half(&mut acc.white, &params.input_weights[idx]);
+				sub_half(&mut acc.black, &params.input_weights[midx]);
+			}
 		}
 
 		/// Squared-clamped-ReLU dot product - same lane layout as the original
@@ -342,38 +350,40 @@ mod forward {
 			let qa = _mm256_set1_epi16(QA as i16);
 			let mut sum = _mm256_setzero_si256();
 
-			for i in (0..HIDDEN_SIZE).step_by(16) {
-				// ── "us" half ──────────────────────────────────────────────
-				let mut u = _mm256_loadu_si256(us.as_ptr().add(i) as *const __m256i);
-				let wu = _mm256_loadu_si256(w0.as_ptr().add(i) as *const __m256i);
+			unsafe {
+				for i in (0..HIDDEN_SIZE).step_by(16) {
+					// ── "us" half ──────────────────────────────────────────────
+					let mut u = _mm256_loadu_si256(us.as_ptr().add(i) as *const __m256i);
+					let wu = _mm256_loadu_si256(w0.as_ptr().add(i) as *const __m256i);
 
-				u = _mm256_max_epi16(u, zero);
-				u = _mm256_min_epi16(u, qa);
+					u = _mm256_max_epi16(u, zero);
+					u = _mm256_min_epi16(u, qa);
 
-				let u_sq = _mm256_mullo_epi16(u, u);
-				let u_sq_lo = _mm256_cvtepu16_epi32(_mm256_castsi256_si128(u_sq));
-				let u_sq_hi = _mm256_cvtepu16_epi32(_mm256_extracti128_si256(u_sq, 1));
-				let wu_lo = _mm256_cvtepi16_epi32(_mm256_castsi256_si128(wu));
-				let wu_hi = _mm256_cvtepi16_epi32(_mm256_extracti128_si256(wu, 1));
+					let u_sq = _mm256_mullo_epi16(u, u);
+					let u_sq_lo = _mm256_cvtepu16_epi32(_mm256_castsi256_si128(u_sq));
+					let u_sq_hi = _mm256_cvtepu16_epi32(_mm256_extracti128_si256(u_sq, 1));
+					let wu_lo = _mm256_cvtepi16_epi32(_mm256_castsi256_si128(wu));
+					let wu_hi = _mm256_cvtepi16_epi32(_mm256_extracti128_si256(wu, 1));
 
-				sum = _mm256_add_epi32(sum, _mm256_mullo_epi32(u_sq_lo, wu_lo));
-				sum = _mm256_add_epi32(sum, _mm256_mullo_epi32(u_sq_hi, wu_hi));
+					sum = _mm256_add_epi32(sum, _mm256_mullo_epi32(u_sq_lo, wu_lo));
+					sum = _mm256_add_epi32(sum, _mm256_mullo_epi32(u_sq_hi, wu_hi));
 
-				// ── "them" half ────────────────────────────────────────────
-				let mut t = _mm256_loadu_si256(them.as_ptr().add(i) as *const __m256i);
-				let wt = _mm256_loadu_si256(w1.as_ptr().add(i) as *const __m256i);
+					// ── "them" half ────────────────────────────────────────────
+					let mut t = _mm256_loadu_si256(them.as_ptr().add(i) as *const __m256i);
+					let wt = _mm256_loadu_si256(w1.as_ptr().add(i) as *const __m256i);
 
-				t = _mm256_max_epi16(t, zero);
-				t = _mm256_min_epi16(t, qa);
+					t = _mm256_max_epi16(t, zero);
+					t = _mm256_min_epi16(t, qa);
 
-				let t_sq = _mm256_mullo_epi16(t, t);
-				let t_sq_lo = _mm256_cvtepu16_epi32(_mm256_castsi256_si128(t_sq));
-				let t_sq_hi = _mm256_cvtepu16_epi32(_mm256_extracti128_si256(t_sq, 1));
-				let wt_lo = _mm256_cvtepi16_epi32(_mm256_castsi256_si128(wt));
-				let wt_hi = _mm256_cvtepi16_epi32(_mm256_extracti128_si256(wt, 1));
+					let t_sq = _mm256_mullo_epi16(t, t);
+					let t_sq_lo = _mm256_cvtepu16_epi32(_mm256_castsi256_si128(t_sq));
+					let t_sq_hi = _mm256_cvtepu16_epi32(_mm256_extracti128_si256(t_sq, 1));
+					let wt_lo = _mm256_cvtepi16_epi32(_mm256_castsi256_si128(wt));
+					let wt_hi = _mm256_cvtepi16_epi32(_mm256_extracti128_si256(wt, 1));
 
-				sum = _mm256_add_epi32(sum, _mm256_mullo_epi32(t_sq_lo, wt_lo));
-				sum = _mm256_add_epi32(sum, _mm256_mullo_epi32(t_sq_hi, wt_hi));
+					sum = _mm256_add_epi32(sum, _mm256_mullo_epi32(t_sq_lo, wt_lo));
+					sum = _mm256_add_epi32(sum, _mm256_mullo_epi32(t_sq_hi, wt_hi));
+				}
 			}
 
 			// Horizontal reduction: 8 x i32 lanes -> scalar

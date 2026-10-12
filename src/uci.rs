@@ -92,7 +92,7 @@ pub fn run_uci() {
 					let _ = handle.join();
 				}
 				// SearchData holds an Arc clone, so drop it for the Hash resize (Arc::get_mut)
-				search_data = None;
+				drop(search_data.take());
 				handle_setoption(rest, &mut shared_data);
 				search_data = Some(SearchData::new(Arc::clone(&shared_data)));
 			}

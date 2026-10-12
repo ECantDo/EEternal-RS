@@ -82,7 +82,7 @@ impl<'a> Iterator for OrderedMoves<'a> {
 	}
 }
 
-fn score_quiet(search_data: &SearchData, mv: Move, ply: i32) -> i32 {
+fn score_quiet(search_data: &SearchData, mv: Move, _ply: i32) -> i32 {
 	// Get their threats ... haven't made the move yet, so look to where they are attacking
 	let my_side = search_data.board.side_to_move();
 	let threats = search_data.board.attacks_by_color(!my_side);
