@@ -226,7 +226,9 @@ pub static LMR_TABLE: LazyLock<[[i32; MAX_PLY]; MAX_PLY]> = LazyLock::new(|| {
 	})
 });
 fn lmr_reduction(depth: i32, moves_searched: i32) -> i32 {
-	(0.75 + (depth.max(1) as f64).ln() * (moves_searched.max(1) as f64).ln() / 2.5).max(0.0) as i32
+	(crate::params::LMR_BASE
+		+ (depth.max(1) as f64).ln() * (moves_searched.max(1) as f64).ln() / crate::params::LMR_DIVISOR)
+		.max(0.0) as i32
 }
 
 // =================================================================================================

@@ -9,9 +9,8 @@ use crate::{
 	},
 	types::{MAX_PLY, moves::Move, score::Score},
 };
+use crate::params::{CORRHIST_DIV, QS_DELTA_MARGIN};
 use std::sync::atomic::Ordering;
-
-const DELTA_MARGIN: i32 = 200;
 
 pub fn qsearch<NODE: NodeType>(
 	search_data: &mut SearchData,
@@ -52,7 +51,7 @@ pub fn qsearch<NODE: NodeType>(
 		let correction: i32 = search_data
 			.pawn_correction_history
 			.get(stm, search_data.board.pawn_key())
-			/ 64;
+			/ CORRHIST_DIV;
 		stand_pat = (raw_eval + correction).clamp(-Score::MATE_IN_MAX + 1, Score::MATE_IN_MAX - 1);
 
 		if stand_pat >= beta {
@@ -105,7 +104,7 @@ pub fn qsearch<NODE: NodeType>(
 			};
 
 			let captured_value: i32 = captured_type.value();
-			if stand_pat + captured_value + DELTA_MARGIN < alpha {
+			if stand_pat + captured_value + QS_DELTA_MARGIN < alpha {
 				continue;
 			}
 		}

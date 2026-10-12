@@ -14,11 +14,11 @@ use crate::{
 /// a good trade inside the exchange, even though its real eval value is 0.
 fn see_value(pt: PieceType) -> i32 {
 	match pt {
-		PieceType::Pawn => 100,
-		PieceType::Knight => 300,
-		PieceType::Bishop => 400,
-		PieceType::Rook => 600,
-		PieceType::Queen => 1100,
+		PieceType::Pawn => crate::params::SEE_PAWN_VALUE,
+		PieceType::Knight => crate::params::SEE_KNIGHT_VALUE,
+		PieceType::Bishop => crate::params::SEE_BISHOP_VALUE,
+		PieceType::Rook => crate::params::SEE_ROOK_VALUE,
+		PieceType::Queen => crate::params::SEE_QUEEN_VALUE,
 		PieceType::King => 20000,
 		PieceType::None => 0,
 	}

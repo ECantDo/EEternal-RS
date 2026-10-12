@@ -1,4 +1,5 @@
 use crate::search::search_types::{SearchData, SharedData};
+use crate::params::*;
 use std::time::{Duration, Instant};
 
 #[derive(Clone, Copy, Debug)]
@@ -35,10 +36,11 @@ impl TimeManager {
 			}
 			// Standard tc
 			Limits::Fischer(main, inc) => {
-				let inc_time: f64 = 0.70 * inc as f64;
+				let inc_time: f64 = TM_INC_SCALE * inc as f64;
 
-				let soft_scale = 0.0594 - 0.0492 * (-0.0386 * fullmove_number as f64).exp();
-				let hard_scale: f64 = 0.30;
+				let soft_scale =
+					TM_SOFT_BASE - TM_SOFT_AMPLITUDE * (TM_SOFT_DECAY * fullmove_number as f64).exp();
+				let hard_scale: f64 = TM_HARD_SCALE;
 
 				let soft_bound =
 					(soft_scale * main.saturating_sub(move_overhead) as f64 + inc_time) as u64;
@@ -52,9 +54,9 @@ impl TimeManager {
 			// <x> moves in <y> time
 			Limits::Cyclic(main, inc, moves) => {
 				let main = main.saturating_sub(move_overhead);
-				let base = (main as f64 / moves as f64) + 0.75 * inc as f64;
-				soft = ((1.0 * base) as u64).min(main + inc);
-				hard = ((5.0 * base) as u64).min(main + inc);
+				let base = (main as f64 / moves as f64) + TM_CYCLIC_INC_SCALE * inc as f64;
+				soft = ((TM_CYCLIC_SOFT_SCALE * base) as u64).min(main + inc);
+				hard = ((TM_CYCLIC_HARD_SCALE * base) as u64).min(main + inc);
 			}
 			_ => {
 				soft = u64::MAX;

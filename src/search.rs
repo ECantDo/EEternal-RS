@@ -1,4 +1,5 @@
 use crate::history::noisy_key;
+use crate::params::*;
 use crate::search::move_ordering::MovePicker;
 use crate::search::qsearch::qsearch;
 use crate::search::search_types::LMR_TABLE;
@@ -73,8 +74,8 @@ pub fn start_search<Display: DisplayOutput>(search_data: &mut SearchData) -> Mov
 		// ============ Aspiration Windows ============
 		// Search a narrow window around the last score, widening on fail high/low.
 		// Shallow depths are too noisy, so they use the full window.
-		let mut delta = 25;
-		let (mut alpha, mut beta) = if root_depth >= 4 {
+		let mut delta = ASP_DELTA;
+		let (mut alpha, mut beta) = if root_depth >= ASP_MIN_DEPTH {
 			(
 				(prev_score - delta).max(-Score::INF),
 				(prev_score + delta).min(Score::INF),
@@ -100,7 +101,7 @@ pub fn start_search<Display: DisplayOutput>(search_data: &mut SearchData) -> Mov
 			}
 
 			delta += delta / 2;
-			if delta > 1000 {
+			if delta > ASP_MAX_DELTA {
 				alpha = -Score::INF;
 				beta = Score::INF;
 			}
@@ -202,7 +203,7 @@ fn search<Node: NodeType>(
 		let correction: i32 = search_data
 			.pawn_correction_history
 			.get(stm, search_data.board.pawn_key())
-			/ 64;
+			/ CORRHIST_DIV;
 		(raw_eval + correction).clamp(-Score::MATE_IN_MAX + 1, Score::MATE_IN_MAX - 1)
 	};
 
@@ -221,7 +222,7 @@ fn search<Node: NodeType>(
 	let improving: bool = improvement > 0;
 
 	// IIR
-	if depth >= 4 && tt_probe.best_move == Move::NONE && (Node::PV || cut_node) {
+	if depth >= IIR_MIN_DEPTH && tt_probe.best_move == Move::NONE && (Node::PV || cut_node) {
 		depth -= 1;
 	}
 
@@ -231,34 +232,32 @@ fn search<Node: NodeType>(
 	// Razoring
 	#[cfg(feature = "razoring")]
 	if !Node::PV && !in_check && alpha < 2048 && !tt_probe.best_move.is_quiet() {
-		if static_eval < alpha - 250 - 250 * depth2 {
+		if static_eval < alpha - RAZOR_BASE - RAZOR_DEPTH2_MULT * depth2 {
 			return qsearch::<NonPV>(search_data, alpha, beta, ply);
 		}
 	}
 
 	// =============================================================================================
 	// Reverse futility pruning
-	const RFP_MARGIN: i32 = crate::params::RFP_MARGIN;
-
 	if !Node::PV
 		&& !in_check
 		&& static_eval - RFP_MARGIN * (depth - improving as i32) >= beta
-		&& depth <= 8
+		&& depth <= RFP_MAX_DEPTH
 		&& beta.abs() < Score::MATE_IN_MAX
 	{
-		return lerp(static_eval, beta, 0.5);
+		return lerp(static_eval, beta, RFP_LERP);
 	}
 
 	// =============================================================================================
 	// Null move
 	if cut_node
 		&& !in_check
-		&& depth >= 3
+		&& depth >= NMP_MIN_DEPTH
 		&& (static_eval >= beta)
 		&& beta.abs() < Score::MATE_IN_MAX
 		&& search_data.board.has_non_pawn_material()
 	{
-		let r = 3 + depth / 3;
+		let r = NMP_BASE_REDUCTION + depth / NMP_DEPTH_DIV;
 		search_data.board.make_null_move();
 		let score = -search::<NonPV>(search_data, -beta, -beta + 1, depth - r, ply + 1, false);
 		search_data.board.undo_null_move();
@@ -311,11 +310,15 @@ fn search<Node: NodeType>(
 		// SEE Pruning
 		if !Node::ROOT // Doing things at the root is bad
 			&& best_score > -Score::MATE_IN_MAX // ah
-			&& depth <= 8
+			&& depth <= SEE_PRUNE_MAX_DEPTH
 		// Only near the leaves where these types of moves would be bad to look at
 		// && !mv.is_quiet_promotion() // Sprt failed
 		{
-			let threshold = if is_quiet { -64 * depth } else { -20 * depth2 };
+			let threshold = if is_quiet {
+				SEE_QUIET_MARGIN * depth
+			} else {
+				SEE_NOISY_MARGIN * depth2
+			};
 			if search_data.board.see(mv) < threshold {
 				continue;
 			}
@@ -329,7 +332,7 @@ fn search<Node: NodeType>(
 			&& is_quiet
 			&& best_score > -Score::MATE_IN_MAX
 			&& !mv.is_promotion()
-			&& (moves_searched as i32) >= (3 + depth2) / (1 + !improving as i32)
+			&& (moves_searched as i32) >= (LMP_BASE + depth2) / (1 + !improving as i32)
 		{
 			picker.skip_quiets();
 			continue;
@@ -348,13 +351,13 @@ fn search<Node: NodeType>(
 		if search_data.board.in_check() {
 			check_extensions = 1; // Check extensions
 		}
-		if depth >= 2 && moves_searched >= 2 {
+		if depth >= LMR_MIN_DEPTH && moves_searched >= LMR_MIN_MOVES {
 			// search the first 3 moves in full, then LMR
 			// Only do LMR when not in check? (might be better)
 			lmr_reductions = LMR_TABLE[depth as usize][moves_searched];
 
 			// TODO: Try this
-			if moves_searched >= 4 {
+			if moves_searched >= LMR_NOT_IMPROVING_MIN_MOVES {
 				lmr_reductions += !improving as i32;
 			}
 		}
@@ -540,7 +543,8 @@ fn search<Node: NodeType>(
 		&& !(bound == Bound::Lower && best_score <= static_eval)
 		&& !(bound == Bound::Upper && best_score >= static_eval)
 	{
-		let bonus = (148 * depth * (best_score - static_eval) / 128).clamp(-4678, 2496);
+		let bonus = (CORRHIST_BONUS_MULT * depth * (best_score - static_eval) / CORRHIST_BONUS_DIV)
+			.clamp(CORRHIST_BONUS_MIN, CORRHIST_BONUS_MAX);
 		search_data
 			.pawn_correction_history
 			.update(stm, search_data.board.pawn_key(), bonus);
@@ -551,7 +555,7 @@ fn search<Node: NodeType>(
 
 /// like basically everything else, this needs tuning
 fn history_bonus(depth: i32) -> i32 {
-	(depth * depth * 4).min(1600)
+	(depth * depth * HISTORY_BONUS_MULT).min(HISTORY_BONUS_MAX)
 }
 
 fn lerp(a: i32, b: i32, t: f32) -> i32 {

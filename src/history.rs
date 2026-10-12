@@ -37,7 +37,7 @@ pub struct QuietHistory {
 }
 
 impl QuietHistory {
-	const MAX_HISTORY: i32 = 8192; // ceil(i16::MAX / 4) -> 32768 / 4 (max is 32767)
+	const MAX_HISTORY: i32 = crate::params::QUIET_HISTORY_MAX; // was ceil(i16::MAX / 4) -> 32768 / 4 (max is 32767)
 
 	pub fn get(&self, threats: Bitboard, stm: Color, mv: Move) -> i32 {
 		self.entries[stm][threats.contains(mv.from()) as usize][threats.contains(mv.to()) as usize]
@@ -68,7 +68,7 @@ pub struct NoisyHistory {
 }
 
 impl NoisyHistory {
-	const MAX_HISTORY: i32 = 12800;
+	const MAX_HISTORY: i32 = crate::params::NOISY_HISTORY_MAX;
 
 	pub fn get(&self, threats: Bitboard, piece: Piece, sq: Square, captured: PieceType) -> i32 {
 		self.entries[piece][sq][captured][threats.contains(sq) as usize] as i32
@@ -113,7 +113,7 @@ pub struct CorrectionHistory {
 impl CorrectionHistory {
 	const SIZE: usize = 1 << 16;
 	const MASK: usize = Self::SIZE - 1;
-	const MAX_HISTORY: i32 = 14605;
+	const MAX_HISTORY: i32 = crate::params::CORRHIST_MAX;
 
 	pub fn get(&self, stm: Color, pawn_key: u64) -> i32 {
 		self.entries[stm][pawn_key as usize & Self::MASK] as i32
