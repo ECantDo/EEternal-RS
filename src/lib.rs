@@ -1,24 +1,16 @@
 #![cfg_attr(feature = "nightly", feature(hint_prefetch))]
 pub mod attacking;
-
 pub mod board;
-
 pub mod history;
-
 pub mod nnue;
-
-pub mod search;
-
-pub mod time_manager;
-
-pub mod types;
-
-pub mod uci;
-
-pub mod utils;
-
+pub mod params;
 pub mod rays;
+pub mod search;
 pub mod settings;
+pub mod time_manager;
+pub mod types;
+pub mod uci;
+pub mod utils;
 
 pub fn initialize() {
 	attacking::initialize_lookups();
