@@ -22,6 +22,12 @@ fn main() {
 
 		let (name, value, ty) = (cols[0], cols[1], cols[2]);
 
+		// `PARAM_<NAME>=...` in the environment replaces the csv value, so a tuner can build
+		// variants without editing the file.
+		println!("cargo:rerun-if-env-changed=PARAM_{name}");
+		let overridden = env::var(format!("PARAM_{name}")).ok();
+		let value = overridden.as_deref().unwrap_or(value);
+
 		out.push_str(&format!("pub const {name}: {ty} = {value};\n"));
 	}
 
