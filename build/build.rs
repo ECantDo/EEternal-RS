@@ -25,6 +25,6 @@ fn main() {
 		out.push_str(&format!("pub const {name}: {ty} = {value};\n"));
 	}
 
-	let dest = Path::new(&env::var("OUT_DIR").unwrap()).join("params.rs");
+	let dest = Path::new(&env::var("OUT_DIR").unwrap()).join("generated_params.rs");
 	fs::write(dest, out).unwrap();
 }

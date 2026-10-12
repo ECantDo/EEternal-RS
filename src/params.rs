@@ -1,1 +1,1 @@
-include!(concat!(env!("OUT_DIR"), "/params.rs"));
+include!(concat!(env!("OUT_DIR"), "/generated_params.rs"));

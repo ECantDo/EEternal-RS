@@ -238,7 +238,7 @@ fn search<Node: NodeType>(
 
 	// =============================================================================================
 	// Reverse futility pruning
-	const RFP_MARGIN: i32 = 90;
+	const RFP_MARGIN: i32 = crate::params::RFP_MARGIN;
 
 	if !Node::PV
 		&& !in_check
