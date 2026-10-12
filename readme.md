@@ -26,7 +26,7 @@ Time control: `10+0.1` (10 seconds, plus 0.1 seconds per move), 16MB hash.
 | [0.1.16](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.1.16) | **3385 +/- 13** | 2216 | 24 | 3130 to 3525 | [games](docs/elo_results.md#0116) |
 | [0.1.15](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.1.15) | **3400 +/- 13** | 2024 | 21 | 3153 to 3525 | [games](docs/elo_results.md#0115) |
 | [0.1.14](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.1.14) | **3378 +/- 13** | 2280 | 25 | 3102 to 3525 | [games](docs/elo_results.md#0114) |
-| [0.1.13](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.1.13) | **3376 +/- 18** | 1000 | 5 | 3094 to 3362 | [games](docs/elo_results.md#0113) |
+| [0.1.13](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.1.13) | **3361 +/- 12** | 2408 | 27 | 3087 to 3525 | [games](docs/elo_results.md#0113) |
 | [0.1.12](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.1.12) | **3375 +/- 19** | 1000 | 5 | 3367 to 3485 | [games](docs/elo_results.md#0112) |
 | [0.1.11](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.1.11) | **3376 +/- 18** | 1000 | 5 | 3367 to 3485 | [games](docs/elo_results.md#0111) |
 | [0.1.10](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.1.10) | **3336 +/- 12** | 2408 | 27 | 3087 to 3525 | [games](docs/elo_results.md#0110) |
