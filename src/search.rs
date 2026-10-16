@@ -278,11 +278,13 @@ fn search<Node: NodeType>(
 		// Otherwise we need a full search
 	}
 
-	// ============ Move Picker ============
+	// =============================================================================================
+	// Move Picker
 	// Moves are generated in stages as they're needed; see MovePicker
 	let mut picker = MovePicker::new(tt_probe.best_move, search_data.killers.get(ply), ply);
 
-	// ============ Search ============
+	// =============================================================================================
+	// Search
 	let mut moves_searched: usize = 0;
 	let mut best_score = -Score::INF;
 	let mut best_move = Move::NONE;
