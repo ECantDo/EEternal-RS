@@ -3,3 +3,4 @@
 *.bin
 .idea/dictionaries/project.xml
 /build_release.sh
+/local_docs/
