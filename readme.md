@@ -22,6 +22,8 @@ Time control: `10+0.1` (10 seconds, plus 0.1 seconds per move), 16MB hash.
 
 | Version | Approx Elo | Games | Opponents | Opponent Elo | Results |
 |---------|------------|-------|-----------|--------------|---------|
+| [0.2.3](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.2.3) | **3410 +/- 15** | 1664 | 26 | 3130 to 3525 | [games](docs/elo_results.md#023) |
+| [0.2.2](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.2.2) | **3422 +/- 15** | 1664 | 26 | 3130 to 3525 | [games](docs/elo_results.md#022) |
 | [0.2.1](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.2.1) | **3419 +/- 15** | 1536 | 24 | 3130 to 3525 | [games](docs/elo_results.md#021) |
 | [0.2.0](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.2.0) | **3396 +/- 12** | 2344 | 26 | 3094 to 3525 | [games](docs/elo_results.md#020) |
 | [0.1.16](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.1.16) | **3382 +/- 12** | 2408 | 27 | 3087 to 3525 | [games](docs/elo_results.md#0116) |
