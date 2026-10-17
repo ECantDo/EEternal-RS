@@ -340,6 +340,20 @@ fn search<Node: NodeType>(
 			continue;
 		}
 
+		// =========================================================================================
+		// Quiet Futility Pruning
+		if !Node::ROOT
+			&& !in_check
+			&& is_quiet
+			&& !mv.is_promotion()
+			&& best_score > -Score::MATE_IN_MAX
+			&& depth <= QFP_MAX_DEPTH
+			&& static_eval + QFP_BASE + QFP_DEPTH_MULT * depth <= alpha
+		{
+			picker.skip_quiets();
+			continue;
+		}
+
 		search_data.make_move(mv);
 
 		#[cfg(feature = "prefetch")]
