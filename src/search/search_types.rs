@@ -220,15 +220,18 @@ impl Default for Counter {
 // =================================================================================================
 // LMR
 // =================================================================================================
+/// Reductions in 1024ths of a ply (1024 = 1 ply), so other adjustments can be fractional too.
+/// Search divides the total by 1024 at the end.
 pub static LMR_TABLE: LazyLock<[[i32; MAX_PLY]; MAX_PLY]> = LazyLock::new(|| {
 	std::array::from_fn(|depth| {
 		std::array::from_fn(|moves| lmr_reduction(depth as i32, moves as i32))
 	})
 });
 fn lmr_reduction(depth: i32, moves_searched: i32) -> i32 {
-	(crate::params::LMR_BASE
+	((crate::params::LMR_BASE
 		+ (depth.max(1) as f64).ln() * (moves_searched.max(1) as f64).ln() / crate::params::LMR_DIVISOR)
-		.max(0.0) as i32
+		.max(0.0)
+		* 1024.0) as i32
 }
 
 // =================================================================================================

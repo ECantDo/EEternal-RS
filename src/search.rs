@@ -309,6 +309,7 @@ fn search<Node: NodeType>(
 	while let Some(mv) = picker.next(search_data) {
 		let is_quiet = mv.is_quiet();
 
+		// =========================================================================================
 		// SEE Pruning
 		if !Node::ROOT // Doing things at the root is bad
 			&& best_score > -Score::MATE_IN_MAX // ah
@@ -374,8 +375,10 @@ fn search<Node: NodeType>(
 
 			// TODO: Try this
 			if moves_searched >= LMR_NOT_IMPROVING_MIN_MOVES {
-				lmr_reductions += !improving as i32;
+				lmr_reductions += LMR_NOT_IMPROVING * !improving as i32;
 			}
+
+			lmr_reductions /= 1024;
 		}
 
 		// ===================== SEARCH ====================
@@ -574,6 +577,7 @@ fn history_bonus(depth: i32) -> i32 {
 	(depth * depth * HISTORY_BONUS_MULT).min(HISTORY_BONUS_MAX)
 }
 
-fn lerp(a: i32, b: i32, t: f32) -> i32 {
-	t.mul_add((b - a) as f32, a as f32) as i32
+/// `t` is in 1024ths: 0 gives `a`, 1024 gives `b`
+const fn lerp(a: i32, b: i32, t: i32) -> i32 {
+	a + (b - a) * t / 1024
 }
