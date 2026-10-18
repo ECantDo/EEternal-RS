@@ -6,6 +6,8 @@ pub mod nnue;
 pub mod params;
 pub mod rays;
 pub mod search;
+#[cfg(feature = "data_gen")]
+pub mod self_play;
 pub mod settings;
 pub mod time_manager;
 pub mod types;

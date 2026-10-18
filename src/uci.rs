@@ -106,6 +106,11 @@ pub fn run_uci() {
 				let args: Vec<&str> = rest.split_whitespace().collect();
 				crate::utils::bench::bench::<true>(&args);
 			}
+			#[cfg(feature = "data_gen")]
+			"datagen" => {
+				let args: Vec<&str> = rest.split_whitespace().collect();
+				crate::self_play::run(&args);
+			}
 			_ => {
 				eprintln!("Unknown option {}", line)
 			} // ignore anything we don't handle yet (setoption, debug, etc.)
