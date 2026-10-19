@@ -40,6 +40,9 @@ impl Square {
 		unsafe { std::mem::transmute(self as u8 >> 3) }
 	}
 
+	pub const fn flip_file(self) -> Self {
+		Self::new(self as u8 ^ 7)
+	}
 	pub const fn flip_rank(self) -> Self {
 		Self::new(self as u8 ^ 56)
 	}
