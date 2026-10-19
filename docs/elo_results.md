@@ -7,6 +7,21 @@ would give on their own; the version's rating pools all of them, weighted by the
 
 Time control: every table on this page is from `10+0.1` games (10 seconds, plus 0.1 seconds per move), 16MB hash.
 
+## 0.2.5
+
+Approx Elo: **3418 +/- 24**, 512 games
+
+| Opponent | Elo (Assumed) | Games | W | L | D | Score | Estimate |
+|----------|---------------|-------|---|---|---|-------|----------|
+| `StockNemo 5.7.0.0` | 3270 | 64 | 39 | 5 | 20 | 76.6% | 3476 +/- 78 |
+| `Mantissa 3.7.2` | 3311 | 64 | 37 | 5 | 22 | 75.0% | 3502 +/- 74 |
+| `Reckless 0.6.0` | 3377 | 64 | 18 | 18 | 28 | 50.0% | 3377 +/- 65 |
+| `Stash 37.0` | 3419 | 64 | 17 | 27 | 20 | 42.2% | 3364 +/- 72 |
+| `BlackCore 6.0` | 3438 | 64 | 21 | 17 | 26 | 53.1% | 3460 +/- 66 |
+| `Stockfish 8` | 3449 | 64 | 10 | 22 | 32 | 40.6% | 3383 +/- 61 |
+| `Stormphrax 2.0.0` | 3476 | 64 | 11 | 34 | 19 | 32.0% | 3345 +/- 76 |
+| `Viridithas 9.0.0` | 3511 | 64 | 13 | 24 | 27 | 41.4% | 3451 +/- 66 |
+
 ## 0.2.3
 
 Approx Elo: **3410 +/- 15**, 1664 games
