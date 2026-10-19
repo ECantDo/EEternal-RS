@@ -51,8 +51,8 @@ pub struct NNUEParams {
 	input_weights: [[i16; HIDDEN_SIZE]; INPUT_SIZE],
 	input_biases: [i16; HIDDEN_SIZE],
 	// 2 perspectives
-	output_weights: [i16; HIDDEN_SIZE * 2],
-	output_bias: i16,
+	output_weights: [[i16; HIDDEN_SIZE * 2]; 8], // [8][HIDDEN_SIZE * 2]
+	output_bias: [i16; 8],
 }
 
 /// Place a trained network at this path (relative to this file) and add
@@ -62,7 +62,7 @@ pub struct NNUEParams {
 const EXPECTED: usize = std::mem::size_of::<NNUEParams>();
 #[cfg(feature = "embed-nnue")]
 
-const ACTUAL: usize = include_bytes!("nnue/768hm-128x2-1.bin").len();
+const ACTUAL: usize = include_bytes!("nnue/768hm-128x2-1-ob8.bin").len();
 #[cfg(feature = "embed-nnue")]
 
 const _: [(); EXPECTED] = [(); ACTUAL];
@@ -76,7 +76,8 @@ impl NNUEParams {
 	/// `loadFromPtr`/`memcpy` did implicitly.
 	#[cfg(feature = "embed-nnue")]
 	fn embedded() -> &'static Self {
-		static EMBEDDED: NNUEParams = unsafe { transmute(*include_bytes!("nnue/768hm-128x2-1.bin")) };
+		static EMBEDDED: NNUEParams =
+			unsafe { transmute(*include_bytes!("nnue/768hm-128x2-1-ob8.bin")) };
 		&EMBEDDED
 	}
 }
@@ -196,12 +197,25 @@ mod forward {
 	/// perspective's king is on files e-h (`flip`, indexed by colour).
 	pub(super) fn indices(piece: Piece, square: Square, flip: [bool; 2]) -> (usize, usize) {
 		let white_sq = if flip[0] { square.flip_file() } else { square };
-		let black_sq = if flip[1] { square.flip_rank().flip_file() } else { square.flip_rank() };
+		let black_sq = if flip[1] {
+			square.flip_rank().flip_file()
+		} else {
+			square.flip_rank()
+		};
 		let mirrored_piece = Piece::new(!piece.color(), piece.piece_type());
-		(feature_index(piece, white_sq), feature_index(mirrored_piece, black_sq))
+		(
+			feature_index(piece, white_sq),
+			feature_index(mirrored_piece, black_sq),
+		)
 	}
 
-	pub fn add_feature(acc: &mut Accumulator, params: &NNUEParams, piece: Piece, square: Square, flip: [bool; 2]) {
+	pub fn add_feature(
+		acc: &mut Accumulator,
+		params: &NNUEParams,
+		piece: Piece,
+		square: Square,
+		flip: [bool; 2],
+	) {
 		let (idx, midx) = indices(piece, square, flip);
 
 		#[cfg(target_feature = "avx2")]
@@ -280,13 +294,13 @@ mod forward {
 		scalar::add2_sub2(out, input, params, add1, add2, sub1, sub2);
 	}
 
-	pub fn output(acc: &Accumulator, stm: Color, params: &NNUEParams) -> i32 {
+	pub fn output(acc: &Accumulator, stm: Color, params: &NNUEParams, bucket: usize) -> i32 {
 		#[cfg(target_feature = "avx2")]
 		unsafe {
-			avx2::output(acc, stm, params)
+			avx2::output(acc, stm, params, bucket)
 		}
 		#[cfg(not(target_feature = "avx2"))]
-		scalar::output(acc, stm, params)
+		scalar::output(acc, stm, params, bucket)
 	}
 
 	// ---- scalar fallback: portable, relies on LLVM auto-vectorization ----
@@ -378,14 +392,14 @@ mod forward {
 			}
 		}
 
-		pub fn output(acc: &Accumulator, stm: Color, params: &NNUEParams) -> i32 {
+		pub fn output(acc: &Accumulator, stm: Color, params: &NNUEParams, bucket: usize) -> i32 {
 			let (us, them) = match stm {
 				Color::White => (&acc.white, &acc.black),
 				Color::Black => (&acc.black, &acc.white),
 			};
 
-			let w0 = &params.output_weights[0..HIDDEN_SIZE];
-			let w1 = &params.output_weights[HIDDEN_SIZE..HIDDEN_SIZE * 2];
+			let w0 = &params.output_weights[bucket][0..HIDDEN_SIZE];
+			let w1 = &params.output_weights[bucket][HIDDEN_SIZE..HIDDEN_SIZE * 2];
 
 			let mut sum: i32 = 0;
 			for i in 0..HIDDEN_SIZE {
@@ -397,7 +411,7 @@ mod forward {
 			}
 
 			let mut output = sum / QA;
-			output += params.output_bias as i32;
+			output += params.output_bias[bucket] as i32;
 			output *= SCALE;
 			output /= QA * QB;
 
@@ -589,14 +603,19 @@ mod forward {
 		/// AVX2 `evaluateNNUE`: 16 x i16 per iteration, widened to i32 pairs for
 		/// the multiply-accumulate, horizontally reduced at the end.
 		#[target_feature(enable = "avx2")]
-		pub unsafe fn output(acc: &Accumulator, stm: Color, params: &NNUEParams) -> i32 {
+		pub unsafe fn output(
+			acc: &Accumulator,
+			stm: Color,
+			params: &NNUEParams,
+			bucket: usize,
+		) -> i32 {
 			let (us, them) = match stm {
 				Color::White => (&acc.white, &acc.black),
 				Color::Black => (&acc.black, &acc.white),
 			};
 
-			let w0 = &params.output_weights[0..HIDDEN_SIZE];
-			let w1 = &params.output_weights[HIDDEN_SIZE..HIDDEN_SIZE * 2];
+			let w0 = &params.output_weights[bucket][0..HIDDEN_SIZE];
+			let w1 = &params.output_weights[bucket][HIDDEN_SIZE..HIDDEN_SIZE * 2];
 
 			let zero = _mm256_setzero_si256();
 			let qa = _mm256_set1_epi16(QA as i16);
@@ -647,7 +666,7 @@ mod forward {
 			let mut output = _mm_cvtsi128_si32(s);
 
 			output /= QA;
-			output += params.output_bias as i32;
+			output += params.output_bias[bucket] as i32;
 			output *= SCALE;
 			output /= QA * QB;
 
@@ -802,7 +821,9 @@ impl NNUE {
 		self.ensure_accurate(&params, board);
 
 		let acc = &self.stack[self.index].accumulator;
-		forward::output(acc, board.side_to_move(), &params)
+		let output_bucket: usize = (board.occupancies().popcount() - 2) / 4;
+
+		forward::output(acc, board.side_to_move(), &params, output_bucket)
 	}
 
 	/// `board` is the position at the current ply. If a king crossed the d/e
@@ -891,7 +912,15 @@ impl NNUE {
 			};
 
 			if mv.is_capture() {
-				forward::add_sub2(out, input, params, (final_piece, to), (piece, from), (delta.captured, to), flip);
+				forward::add_sub2(
+					out,
+					input,
+					params,
+					(final_piece, to),
+					(piece, from),
+					(delta.captured, to),
+					flip,
+				);
 			} else {
 				forward::add_sub(out, input, params, (final_piece, to), (piece, from), flip);
 			}
@@ -944,7 +973,10 @@ mod tests {
 		let refreshed = fresh.evaluate(board);
 		let fresh_acc = fresh.stack[0].accumulator;
 
-		assert!(acc.white == fresh_acc.white && acc.black == fresh_acc.black, "accumulator differs, {board}");
+		assert!(
+			acc.white == fresh_acc.white && acc.black == fresh_acc.black,
+			"accumulator differs, {board}"
+		);
 		assert_eq!(incremental, refreshed, "{board}");
 	}
 
@@ -984,13 +1016,19 @@ mod tests {
 				}
 			}
 		}
-		assert!(crossings > 50, "only {crossings} king crossings, the test isn't covering refreshes");
+		assert!(
+			crossings > 50,
+			"only {crossings} king crossings, the test isn't covering refreshes"
+		);
 	}
 
 	/// Left-right mirror of a FEN, without castling rights (they don't mirror).
 	fn mirror_fen(fen: &str) -> String {
 		let parts: Vec<&str> = fen.split(' ').collect();
-		let ranks: Vec<String> = parts[0].split('/').map(|r| r.chars().rev().collect()).collect();
+		let ranks: Vec<String> = parts[0]
+			.split('/')
+			.map(|r| r.chars().rev().collect())
+			.collect();
 		let ep = match parts[3] {
 			"-" => "-".to_string(),
 			sq => {
@@ -999,7 +1037,14 @@ mod tests {
 				format!("{file}{}", c.as_str())
 			}
 		};
-		format!("{} {} - {} {} {}", ranks.join("/"), parts[1], ep, parts[4], parts[5])
+		format!(
+			"{} {} - {} {} {}",
+			ranks.join("/"),
+			parts[1],
+			ep,
+			parts[4],
+			parts[5]
+		)
 	}
 
 	/// Mirrored inputs make the net blind to left vs right, so a position and its mirror image must evaluate the same.
@@ -1016,7 +1061,12 @@ mod tests {
 			let (mut na, mut nb) = (NNUE::new(), NNUE::new());
 			na.reset(&a);
 			nb.reset(&b);
-			assert_eq!(na.evaluate(&a), nb.evaluate(&b), "{no_castling} vs {}", mirror_fen(fen));
+			assert_eq!(
+				na.evaluate(&a),
+				nb.evaluate(&b),
+				"{no_castling} vs {}",
+				mirror_fen(fen)
+			);
 		}
 	}
 
@@ -1032,8 +1082,14 @@ mod tests {
 		let white_pawn = Piece::new(Color::White, PieceType::Pawn);
 		// White's view: own pawn (0..63), e2 flipped to d2 = 11. Black's view: an enemy pawn (384..447), e2 seen from
 		// black's side is e7 = 52, not flipped.
-		assert_eq!(forward::indices(white_pawn, e2, [true, false]), (11, 384 + 52));
+		assert_eq!(
+			forward::indices(white_pawn, e2, [true, false]),
+			(11, 384 + 52)
+		);
 		// And the other way round: only black's view flips, e7 -> d7 = 51
-		assert_eq!(forward::indices(white_pawn, e2, [false, true]), (12, 384 + 51));
+		assert_eq!(
+			forward::indices(white_pawn, e2, [false, true]),
+			(12, 384 + 51)
+		);
 	}
 }
