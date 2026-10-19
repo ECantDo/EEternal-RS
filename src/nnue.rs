@@ -58,7 +58,7 @@ pub struct NNUEParams {
 const EXPECTED: usize = std::mem::size_of::<NNUEParams>();
 #[cfg(feature = "embed-nnue")]
 
-const ACTUAL: usize = include_bytes!("nnue/768-128x2-1_old.bin").len();
+const ACTUAL: usize = include_bytes!("nnue/768-128x2-1.bin").len();
 #[cfg(feature = "embed-nnue")]
 
 const _: [(); EXPECTED] = [(); ACTUAL];
@@ -72,7 +72,7 @@ impl NNUEParams {
 	/// `loadFromPtr`/`memcpy` did implicitly.
 	#[cfg(feature = "embed-nnue")]
 	fn embedded() -> &'static Self {
-		static EMBEDDED: NNUEParams = unsafe { transmute(*include_bytes!("nnue/768-128x2-1_old.bin")) };
+		static EMBEDDED: NNUEParams = unsafe { transmute(*include_bytes!("nnue/768-128x2-1.bin")) };
 		&EMBEDDED
 	}
 }
