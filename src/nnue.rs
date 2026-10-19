@@ -5,10 +5,13 @@
 // replays deltas forward. Internal search nodes that never call `evaluate()`
 // (i.e. every non-leaf node) pay zero NNUE cost.
 //
-// Topology is deliberately left as-is: single (768-128)x2-1 SCReLU net, no
-// king buckets, no threat inputs, no L2/L3. Because there are no buckets,
-// incremental replay is always valid - there's no "can't update, must refresh"
-// case the way Reckless needs for king-bucket crossings.
+// Topology: single (768-128)x2-1 SCReLU net with horizontally mirrored inputs,
+// no king buckets, no threat inputs, no L2/L3. Each perspective whose king is on
+// files e-h sees the board flipped left-to-right (`square ^ 7`), the same as
+// bullet's `ChessBucketsMirrored`. A king crossing between the d and e files
+// changes every feature of its perspective, so that's the one "can't update,
+// must refresh" case: `ensure_accurate` refreshes from the board instead of
+// replaying.
 
 use std::mem::transmute;
 use std::sync::{Arc, RwLock};
@@ -18,6 +21,7 @@ use crate::{
 	types::{
 		MAX_PLY, UP_DIR,
 		castling::castling_rook_squares,
+		color::Color,
 		moves::Move,
 		piece::{Piece, PieceType},
 		square::Square,
@@ -58,7 +62,7 @@ pub struct NNUEParams {
 const EXPECTED: usize = std::mem::size_of::<NNUEParams>();
 #[cfg(feature = "embed-nnue")]
 
-const ACTUAL: usize = include_bytes!("nnue/768-128x2-1.bin").len();
+const ACTUAL: usize = include_bytes!("nnue/768hm-128x2-1.bin").len();
 #[cfg(feature = "embed-nnue")]
 
 const _: [(); EXPECTED] = [(); ACTUAL];
@@ -72,7 +76,7 @@ impl NNUEParams {
 	/// `loadFromPtr`/`memcpy` did implicitly.
 	#[cfg(feature = "embed-nnue")]
 	fn embedded() -> &'static Self {
-		static EMBEDDED: NNUEParams = unsafe { transmute(*include_bytes!("nnue/768-128x2-1.bin")) };
+		static EMBEDDED: NNUEParams = unsafe { transmute(*include_bytes!("nnue/768hm-128x2-1.bin")) };
 		&EMBEDDED
 	}
 }
@@ -187,10 +191,18 @@ mod forward {
 	use super::{Accumulator, HIDDEN_SIZE, NNUEParams, QA, QB, SCALE, feature_index};
 	use crate::types::{color::Color, piece::Piece, square::Square};
 
-	pub fn add_feature(acc: &mut Accumulator, params: &NNUEParams, piece: Piece, square: Square) {
-		let idx = feature_index(piece, square);
+	/// `idx` for white's perspective, `midx` for black's (colours swapped and the
+	/// board flipped top-to-bottom), each flipped left-to-right when that
+	/// perspective's king is on files e-h (`flip`, indexed by colour).
+	pub(super) fn indices(piece: Piece, square: Square, flip: [bool; 2]) -> (usize, usize) {
+		let white_sq = if flip[0] { square.flip_file() } else { square };
+		let black_sq = if flip[1] { square.flip_rank().flip_file() } else { square.flip_rank() };
 		let mirrored_piece = Piece::new(!piece.color(), piece.piece_type());
-		let midx = feature_index(mirrored_piece, square.flip_rank());
+		(feature_index(piece, white_sq), feature_index(mirrored_piece, black_sq))
+	}
+
+	pub fn add_feature(acc: &mut Accumulator, params: &NNUEParams, piece: Piece, square: Square, flip: [bool; 2]) {
+		let (idx, midx) = indices(piece, square, flip);
 
 		#[cfg(target_feature = "avx2")]
 		unsafe {
@@ -205,10 +217,9 @@ mod forward {
 		params: &NNUEParams,
 		piece: Piece,
 		square: Square,
+		flip: [bool; 2],
 	) {
-		let idx = feature_index(piece, square);
-		let mirrored_piece = Piece::new(!piece.color(), piece.piece_type());
-		let midx = feature_index(mirrored_piece, square.flip_rank());
+		let (idx, midx) = indices(piece, square, flip);
 
 		#[cfg(target_feature = "avx2")]
 		unsafe {
@@ -419,11 +430,31 @@ struct MoveDelta {
 	captured: Piece,
 }
 
+impl MoveDelta {
+	/// A king moving between the a-d and e-h halves flips its perspective's
+	/// mirroring, which changes every feature of that perspective.
+	fn crosses_mirror(self) -> bool {
+		self.piece.piece_type() == PieceType::King
+			&& (self.mv.from().get_file() as u8 >= 4) != (self.mv.to().get_file() as u8 >= 4)
+	}
+}
+
 #[derive(Clone, Copy, Default)]
 struct StackEntry {
 	accumulator: Accumulator,
 	accurate: bool,
 	delta: MoveDelta,
+	/// Per colour: that perspective's king is on files e-h, so its features are
+	/// flipped left-to-right. Only meaningful while `accurate`.
+	flip: [bool; 2],
+}
+
+/// Whether each perspective (indexed by colour) is mirrored in `board`.
+fn mirror_flags(board: &Board) -> [bool; 2] {
+	[
+		board.king_square(Color::White).get_file() as u8 >= 4,
+		board.king_square(Color::Black).get_file() as u8 >= 4,
+	]
 }
 
 /// Owned by the search thread (put this on `SearchData`/`ThreadData`, not on
@@ -479,17 +510,19 @@ impl NNUE {
 			white: params.input_biases,
 			black: params.input_biases,
 		};
+		let flip = mirror_flags(board);
 
 		for i in 0..Square::NUM as u8 {
 			let square = Square::new(i);
 			let piece = board.get_piece_on_square(square);
 			if piece != Piece::None {
-				forward::add_feature(&mut acc, &params, piece, square);
+				forward::add_feature(&mut acc, &params, piece, square, flip);
 			}
 		}
 
 		self.stack[self.index].accumulator = acc;
 		self.stack[self.index].accurate = true;
+		self.stack[self.index].flip = flip;
 	}
 
 	/// Records that `mv` is about to be played. Must be called with `board` in
@@ -525,13 +558,18 @@ impl NNUE {
 			return 0;
 		};
 
-		self.ensure_accurate(&params);
+		self.ensure_accurate(&params, board);
 
 		let acc = &self.stack[self.index].accumulator;
 		forward::output(acc, board.side_to_move(), &params)
 	}
 
-	fn ensure_accurate(&mut self, params: &Arc<NNUEParams>) {
+	/// `board` is the position at the current ply. If a king crossed the d/e
+	/// line anywhere since the last accurate ply, replaying can't work (that
+	/// perspective's features all changed), so this refreshes from `board`
+	/// instead. The plies in between stay inaccurate and get rebuilt the same
+	/// way if search comes back to them.
+	fn ensure_accurate(&mut self, params: &Arc<NNUEParams>, board: &Board) {
 		if self.stack[self.index].accurate {
 			return;
 		}
@@ -542,19 +580,27 @@ impl NNUE {
 			last_accurate -= 1;
 		}
 
+		if ((last_accurate + 1)..=self.index).any(|i| self.stack[i].delta.crosses_mirror()) {
+			self.full_refresh(board);
+			return;
+		}
+
+		// No crossing, so the mirroring is the same all the way along
+		let flip = self.stack[last_accurate].flip;
 		for i in (last_accurate + 1)..=self.index {
 			let mut acc = self.stack[i - 1].accumulator;
 			let delta = self.stack[i].delta;
-			Self::apply_delta(&mut acc, params, delta);
+			Self::apply_delta(&mut acc, params, delta, flip);
 			self.stack[i].accumulator = acc;
 			self.stack[i].accurate = true;
+			self.stack[i].flip = flip;
 		}
 	}
 
 	/// Replays one ply's feature changes, branching on move type exactly the
 	/// way `Board::make_move` does - just toggling accumulator features
 	/// instead of bitboards.
-	fn apply_delta(acc: &mut Accumulator, params: &NNUEParams, delta: MoveDelta) {
+	fn apply_delta(acc: &mut Accumulator, params: &NNUEParams, delta: MoveDelta, flip: [bool; 2]) {
 		let mv = delta.mv;
 		let piece = delta.piece;
 		let from = mv.from();
@@ -563,28 +609,28 @@ impl NNUE {
 
 		if mv.is_castling() {
 			let (rook_from, rook_to) = castling_rook_squares(stm, mv.flag());
-			forward::remove_feature(acc, params, piece, from);
-			forward::add_feature(acc, params, piece, to);
+			forward::remove_feature(acc, params, piece, from, flip);
+			forward::add_feature(acc, params, piece, to, flip);
 			let rook = Piece::new(stm, PieceType::Rook);
-			forward::remove_feature(acc, params, rook, rook_from);
-			forward::add_feature(acc, params, rook, rook_to);
+			forward::remove_feature(acc, params, rook, rook_from, flip);
+			forward::add_feature(acc, params, rook, rook_to, flip);
 		} else if mv.is_en_passant() {
-			forward::remove_feature(acc, params, piece, from);
-			forward::add_feature(acc, params, piece, to);
+			forward::remove_feature(acc, params, piece, from, flip);
+			forward::add_feature(acc, params, piece, to, flip);
 			let cap_sq = to.shift(-UP_DIR[stm]);
 			let captured_pawn = Piece::new(!stm, PieceType::Pawn);
-			forward::remove_feature(acc, params, captured_pawn, cap_sq);
+			forward::remove_feature(acc, params, captured_pawn, cap_sq, flip);
 		} else {
 			if mv.is_capture() {
-				forward::remove_feature(acc, params, delta.captured, to);
+				forward::remove_feature(acc, params, delta.captured, to, flip);
 			}
-			forward::remove_feature(acc, params, piece, from);
+			forward::remove_feature(acc, params, piece, from, flip);
 
 			if mv.is_promotion() {
 				let promoted = Piece::new(stm, mv.promotion_piece_type());
-				forward::add_feature(acc, params, promoted, to);
+				forward::add_feature(acc, params, promoted, to, flip);
 			} else {
-				forward::add_feature(acc, params, piece, to);
+				forward::add_feature(acc, params, piece, to, flip);
 			}
 		}
 	}
@@ -593,5 +639,138 @@ impl NNUE {
 impl Default for NNUE {
 	fn default() -> Self {
 		Self::new()
+	}
+}
+
+#[cfg(test)]
+mod tests {
+	use super::{NNUE, forward, mirror_flags, try_init_embedded};
+	use crate::board::Board;
+	use crate::board::generate_moves::AllMoves;
+	use crate::types::{
+		color::Color,
+		moves::Move,
+		piece::{Piece, PieceType},
+		square::Square,
+	};
+
+	const FENS: &[&str] = &[
+		"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+		"r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1",
+		"r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1",
+		// kings on the d/e line with room to wander across it
+		"8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1",
+		"4k3/8/8/3pP3/8/8/8/3K4 w - d6 0 1",
+		"8/3k4/8/8/8/8/4K3/8 w - - 0 1",
+	];
+
+	fn next(seed: &mut u64) -> u64 {
+		*seed ^= *seed << 13;
+		*seed ^= *seed >> 7;
+		*seed ^= *seed << 17;
+		*seed
+	}
+
+	/// The lazily updated accumulator must match one built from scratch for the same board.
+	fn assert_accurate(nnue: &mut NNUE, board: &Board) {
+		let incremental = nnue.evaluate(board);
+		let acc = nnue.stack[nnue.index].accumulator;
+
+		let mut fresh = NNUE::new();
+		fresh.reset(board);
+		let refreshed = fresh.evaluate(board);
+		let fresh_acc = fresh.stack[0].accumulator;
+
+		assert!(acc.white == fresh_acc.white && acc.black == fresh_acc.black, "accumulator differs, {board}");
+		assert_eq!(incremental, refreshed, "{board}");
+	}
+
+	/// Random walks shaped like search: go down a few plies, back up some, evaluating along the way (not at every
+	/// ply, so the replay covers several plies and king crossings in the middle of them).
+	#[test]
+	fn incremental_matches_refresh() {
+		assert!(try_init_embedded());
+		let mut seed: u64 = 0x2545_F491_4F6C_DD1D;
+		let mut crossings = 0;
+
+		for fen in FENS {
+			let root = Board::parse_fen_string(fen).unwrap();
+			for _ in 0..30 {
+				let mut board = root.clone();
+				let mut nnue = NNUE::new();
+				nnue.reset(&board);
+				let mut played: Vec<Move> = Vec::new();
+
+				for _ in 0..120 {
+					let moves = board.generate_all_legal_moves::<AllMoves>();
+					let back = played.len() >= 6 || moves.is_empty() || next(&mut seed) % 4 == 0;
+					if back && !played.is_empty() {
+						let mv = played.pop().unwrap();
+						board.undo_move(mv);
+						nnue.pop();
+					} else if !moves.is_empty() {
+						let mv = moves.get(next(&mut seed) as usize % moves.len()).mv();
+						nnue.push(mv, &board);
+						crossings += nnue.stack[nnue.index].delta.crosses_mirror() as usize;
+						board.make_move(mv);
+						played.push(mv);
+					}
+					if next(&mut seed) % 3 == 0 {
+						assert_accurate(&mut nnue, &board);
+					}
+				}
+			}
+		}
+		assert!(crossings > 50, "only {crossings} king crossings, the test isn't covering refreshes");
+	}
+
+	/// Left-right mirror of a FEN, without castling rights (they don't mirror).
+	fn mirror_fen(fen: &str) -> String {
+		let parts: Vec<&str> = fen.split(' ').collect();
+		let ranks: Vec<String> = parts[0].split('/').map(|r| r.chars().rev().collect()).collect();
+		let ep = match parts[3] {
+			"-" => "-".to_string(),
+			sq => {
+				let mut c = sq.chars();
+				let file = (b'h' - (c.next().unwrap() as u8 - b'a')) as char;
+				format!("{file}{}", c.as_str())
+			}
+		};
+		format!("{} {} - {} {} {}", ranks.join("/"), parts[1], ep, parts[4], parts[5])
+	}
+
+	/// Mirrored inputs make the net blind to left vs right, so a position and its mirror image must evaluate the same.
+	#[test]
+	fn mirror_image_evaluates_the_same() {
+		assert!(try_init_embedded());
+		for fen in FENS {
+			let no_castling = {
+				let p: Vec<&str> = fen.split(' ').collect();
+				format!("{} {} - {} {} {}", p[0], p[1], p[3], p[4], p[5])
+			};
+			let a = Board::parse_fen_string(&no_castling).unwrap();
+			let b = Board::parse_fen_string(&mirror_fen(fen)).unwrap();
+			let (mut na, mut nb) = (NNUE::new(), NNUE::new());
+			na.reset(&a);
+			nb.reset(&b);
+			assert_eq!(na.evaluate(&a), nb.evaluate(&b), "{no_castling} vs {}", mirror_fen(fen));
+		}
+	}
+
+	/// Bullet's `ChessBucketsMirrored`: each perspective flips by *its own* king's file. (The symmetry test can't see
+	/// this - any consistent left/right rule passes it - so pin the exact feature numbers.)
+	#[test]
+	fn each_perspective_follows_its_own_king() {
+		// White king e1 (flipped), black king d8 (not)
+		let board = Board::parse_fen_string("3k4/8/8/8/8/8/4P3/4K3 w - - 0 1").unwrap();
+		assert_eq!(mirror_flags(&board), [true, false]);
+
+		let e2 = Square::new(12);
+		let white_pawn = Piece::new(Color::White, PieceType::Pawn);
+		// White's view: own pawn (0..63), e2 flipped to d2 = 11. Black's view: an enemy pawn (384..447), e2 seen from
+		// black's side is e7 = 52, not flipped.
+		assert_eq!(forward::indices(white_pawn, e2, [true, false]), (11, 384 + 52));
+		// And the other way round: only black's view flips, e7 -> d7 = 51
+		assert_eq!(forward::indices(white_pawn, e2, [false, true]), (12, 384 + 51));
 	}
 }
