@@ -212,21 +212,72 @@ mod forward {
 		scalar::add(acc, params, idx, midx);
 	}
 
-	pub fn remove_feature(
-		acc: &mut Accumulator,
+	// ---- fused updates: `out = input + added - removed`, in one pass over the accumulator ----
+
+	/// Quiet moves and quiet promotions: one feature added, one removed
+	pub fn add_sub(
+		out: &mut Accumulator,
+		input: &Accumulator,
 		params: &NNUEParams,
-		piece: Piece,
-		square: Square,
+		add: (Piece, Square),
+		sub: (Piece, Square),
 		flip: [bool; 2],
 	) {
-		let (idx, midx) = indices(piece, square, flip);
+		let add = indices(add.0, add.1, flip);
+		let sub = indices(sub.0, sub.1, flip);
 
 		#[cfg(target_feature = "avx2")]
 		unsafe {
-			avx2::remove(acc, params, idx, midx);
+			avx2::add_sub(out, input, params, add, sub);
 		}
 		#[cfg(not(target_feature = "avx2"))]
-		scalar::remove(acc, params, idx, midx);
+		scalar::add_sub(out, input, params, add, sub);
+	}
+
+	/// Captures, en passant and capture-promotions: one added, two removed
+	pub fn add_sub2(
+		out: &mut Accumulator,
+		input: &Accumulator,
+		params: &NNUEParams,
+		add: (Piece, Square),
+		sub1: (Piece, Square),
+		sub2: (Piece, Square),
+		flip: [bool; 2],
+	) {
+		let add = indices(add.0, add.1, flip);
+		let sub1 = indices(sub1.0, sub1.1, flip);
+		let sub2 = indices(sub2.0, sub2.1, flip);
+
+		#[cfg(target_feature = "avx2")]
+		unsafe {
+			avx2::add_sub2(out, input, params, add, sub1, sub2);
+		}
+		#[cfg(not(target_feature = "avx2"))]
+		scalar::add_sub2(out, input, params, add, sub1, sub2);
+	}
+
+	/// Castling: king and rook both move, two added, two removed
+	pub fn add2_sub2(
+		out: &mut Accumulator,
+		input: &Accumulator,
+		params: &NNUEParams,
+		add1: (Piece, Square),
+		add2: (Piece, Square),
+		sub1: (Piece, Square),
+		sub2: (Piece, Square),
+		flip: [bool; 2],
+	) {
+		let add1 = indices(add1.0, add1.1, flip);
+		let add2 = indices(add2.0, add2.1, flip);
+		let sub1 = indices(sub1.0, sub1.1, flip);
+		let sub2 = indices(sub2.0, sub2.1, flip);
+
+		#[cfg(target_feature = "avx2")]
+		unsafe {
+			avx2::add2_sub2(out, input, params, add1, add2, sub1, sub2);
+		}
+		#[cfg(not(target_feature = "avx2"))]
+		scalar::add2_sub2(out, input, params, add1, add2, sub1, sub2);
 	}
 
 	pub fn output(acc: &Accumulator, stm: Color, params: &NNUEParams) -> i32 {
@@ -256,15 +307,74 @@ mod forward {
 			}
 		}
 
-		pub fn remove(acc: &mut Accumulator, params: &NNUEParams, idx: usize, midx: usize) {
-			let weights = &params.input_weights[idx];
+		// Fused updates. Wrapping math like the SIMD versions: an intermediate sum may overflow i16,
+		// the final value is still right.
+		pub fn add_sub(
+			out: &mut Accumulator,
+			input: &Accumulator,
+			params: &NNUEParams,
+			add: (usize, usize),
+			sub: (usize, usize),
+		) {
+			let w = &params.input_weights;
 			for i in 0..HIDDEN_SIZE {
-				acc.white[i] -= weights[i];
+				out.white[i] = input.white[i]
+					.wrapping_add(w[add.0][i])
+					.wrapping_sub(w[sub.0][i]);
 			}
-
-			let mirrored_weights = &params.input_weights[midx];
 			for i in 0..HIDDEN_SIZE {
-				acc.black[i] -= mirrored_weights[i];
+				out.black[i] = input.black[i]
+					.wrapping_add(w[add.1][i])
+					.wrapping_sub(w[sub.1][i]);
+			}
+		}
+
+		pub fn add_sub2(
+			out: &mut Accumulator,
+			input: &Accumulator,
+			params: &NNUEParams,
+			add: (usize, usize),
+			sub1: (usize, usize),
+			sub2: (usize, usize),
+		) {
+			let w = &params.input_weights;
+			for i in 0..HIDDEN_SIZE {
+				out.white[i] = input.white[i]
+					.wrapping_add(w[add.0][i])
+					.wrapping_sub(w[sub1.0][i])
+					.wrapping_sub(w[sub2.0][i]);
+			}
+			for i in 0..HIDDEN_SIZE {
+				out.black[i] = input.black[i]
+					.wrapping_add(w[add.1][i])
+					.wrapping_sub(w[sub1.1][i])
+					.wrapping_sub(w[sub2.1][i]);
+			}
+		}
+
+		pub fn add2_sub2(
+			out: &mut Accumulator,
+			input: &Accumulator,
+			params: &NNUEParams,
+			add1: (usize, usize),
+			add2: (usize, usize),
+			sub1: (usize, usize),
+			sub2: (usize, usize),
+		) {
+			let w = &params.input_weights;
+			for i in 0..HIDDEN_SIZE {
+				out.white[i] = input.white[i]
+					.wrapping_add(w[add1.0][i])
+					.wrapping_add(w[add2.0][i])
+					.wrapping_sub(w[sub1.0][i])
+					.wrapping_sub(w[sub2.0][i]);
+			}
+			for i in 0..HIDDEN_SIZE {
+				out.black[i] = input.black[i]
+					.wrapping_add(w[add1.1][i])
+					.wrapping_add(w[add2.1][i])
+					.wrapping_sub(w[sub1.1][i])
+					.wrapping_sub(w[sub2.1][i]);
 			}
 		}
 
@@ -319,13 +429,79 @@ mod forward {
 		}
 
 		#[target_feature(enable = "avx2")]
-		unsafe fn sub_half(half: &mut [i16; HIDDEN_SIZE], weights: &[i16; HIDDEN_SIZE]) {
+		unsafe fn add_sub_half(
+			out: &mut [i16; HIDDEN_SIZE],
+			input: &[i16; HIDDEN_SIZE],
+			w_add: &[i16; HIDDEN_SIZE],
+			w_sub: &[i16; HIDDEN_SIZE],
+		) {
 			unsafe {
 				for i in (0..HIDDEN_SIZE).step_by(16) {
-					let acc = _mm256_loadu_si256(half.as_ptr().add(i) as *const __m256i);
-					let w = _mm256_loadu_si256(weights.as_ptr().add(i) as *const __m256i);
-					let diff = _mm256_sub_epi16(acc, w);
-					_mm256_storeu_si256(half.as_mut_ptr().add(i) as *mut __m256i, diff);
+					// Load in each of the values
+					let acc = _mm256_loadu_si256(input.as_ptr().add(i) as *const __m256i);
+					let add = _mm256_loadu_si256(w_add.as_ptr().add(i) as *const __m256i);
+					let sub = _mm256_loadu_si256(w_sub.as_ptr().add(i) as *const __m256i);
+
+					// Do math
+					let res = _mm256_sub_epi16(_mm256_add_epi16(acc, add), sub);
+
+					// Store it into the new acc (since it's in a stack)
+					_mm256_storeu_si256(out.as_mut_ptr().add(i) as *mut __m256i, res);
+				}
+			}
+		}
+
+		#[target_feature(enable = "avx2")]
+		unsafe fn add_sub2_half(
+			out: &mut [i16; HIDDEN_SIZE],
+			input: &[i16; HIDDEN_SIZE],
+			w_add: &[i16; HIDDEN_SIZE],
+			w_sub1: &[i16; HIDDEN_SIZE],
+			w_sub2: &[i16; HIDDEN_SIZE],
+		) {
+			unsafe {
+				for i in (0..HIDDEN_SIZE).step_by(16) {
+					// Load in each of the values
+					let acc = _mm256_loadu_si256(input.as_ptr().add(i) as *const __m256i);
+					let add = _mm256_loadu_si256(w_add.as_ptr().add(i) as *const __m256i);
+					let sub1 = _mm256_loadu_si256(w_sub1.as_ptr().add(i) as *const __m256i);
+					let sub2 = _mm256_loadu_si256(w_sub2.as_ptr().add(i) as *const __m256i);
+
+					// Do math
+					let res =
+						_mm256_sub_epi16(_mm256_add_epi16(acc, add), _mm256_add_epi16(sub1, sub2));
+
+					// Store it into the new acc (since it's in a stack)
+					_mm256_storeu_si256(out.as_mut_ptr().add(i) as *mut __m256i, res);
+				}
+			}
+		}
+		#[target_feature(enable = "avx2")]
+		unsafe fn add2_sub2_half(
+			out: &mut [i16; HIDDEN_SIZE],
+			input: &[i16; HIDDEN_SIZE],
+			w_add1: &[i16; HIDDEN_SIZE],
+			w_add2: &[i16; HIDDEN_SIZE],
+			w_sub1: &[i16; HIDDEN_SIZE],
+			w_sub2: &[i16; HIDDEN_SIZE],
+		) {
+			unsafe {
+				for i in (0..HIDDEN_SIZE).step_by(16) {
+					// Load in each of the values
+					let acc = _mm256_loadu_si256(input.as_ptr().add(i) as *const __m256i);
+					let add1 = _mm256_loadu_si256(w_add1.as_ptr().add(i) as *const __m256i);
+					let add2 = _mm256_loadu_si256(w_add2.as_ptr().add(i) as *const __m256i);
+					let sub1 = _mm256_loadu_si256(w_sub1.as_ptr().add(i) as *const __m256i);
+					let sub2 = _mm256_loadu_si256(w_sub2.as_ptr().add(i) as *const __m256i);
+
+					// Do math
+					let res = _mm256_sub_epi16(
+						_mm256_add_epi16(acc, _mm256_add_epi16(add1, add2)),
+						_mm256_add_epi16(sub1, sub2),
+					);
+
+					// Store it into the new acc (since it's in a stack)
+					_mm256_storeu_si256(out.as_mut_ptr().add(i) as *mut __m256i, res);
 				}
 			}
 		}
@@ -337,10 +513,75 @@ mod forward {
 			}
 		}
 
-		pub unsafe fn remove(acc: &mut Accumulator, params: &NNUEParams, idx: usize, midx: usize) {
+		// Fused wrappers: each feature is (white index, black index), see `forward::indices`
+		pub unsafe fn add_sub(
+			out: &mut Accumulator,
+			input: &Accumulator,
+			params: &NNUEParams,
+			add: (usize, usize),
+			sub: (usize, usize),
+		) {
+			let w = &params.input_weights;
 			unsafe {
-				sub_half(&mut acc.white, &params.input_weights[idx]);
-				sub_half(&mut acc.black, &params.input_weights[midx]);
+				add_sub_half(&mut out.white, &input.white, &w[add.0], &w[sub.0]);
+				add_sub_half(&mut out.black, &input.black, &w[add.1], &w[sub.1]);
+			}
+		}
+
+		pub unsafe fn add_sub2(
+			out: &mut Accumulator,
+			input: &Accumulator,
+			params: &NNUEParams,
+			add: (usize, usize),
+			sub1: (usize, usize),
+			sub2: (usize, usize),
+		) {
+			let w = &params.input_weights;
+			unsafe {
+				add_sub2_half(
+					&mut out.white,
+					&input.white,
+					&w[add.0],
+					&w[sub1.0],
+					&w[sub2.0],
+				);
+				add_sub2_half(
+					&mut out.black,
+					&input.black,
+					&w[add.1],
+					&w[sub1.1],
+					&w[sub2.1],
+				);
+			}
+		}
+
+		pub unsafe fn add2_sub2(
+			out: &mut Accumulator,
+			input: &Accumulator,
+			params: &NNUEParams,
+			add1: (usize, usize),
+			add2: (usize, usize),
+			sub1: (usize, usize),
+			sub2: (usize, usize),
+		) {
+			let w = &params.input_weights;
+			unsafe {
+				add2_sub2_half(
+					&mut out.white,
+					&input.white,
+					&w[add1.0],
+					&w[add2.0],
+					&w[sub1.0],
+					&w[sub2.0],
+				);
+				add2_sub2_half(
+					&mut out.black,
+					&input.black,
+					&w[add1.1],
+					&w[add2.1],
+					&w[sub1.1],
+					&w[sub2.1],
+				);
 			}
 		}
 
@@ -588,19 +829,27 @@ impl NNUE {
 		// No crossing, so the mirroring is the same all the way along
 		let flip = self.stack[last_accurate].flip;
 		for i in (last_accurate + 1)..=self.index {
-			let mut acc = self.stack[i - 1].accumulator;
-			let delta = self.stack[i].delta;
-			Self::apply_delta(&mut acc, params, delta, flip);
-			self.stack[i].accumulator = acc;
-			self.stack[i].accurate = true;
-			self.stack[i].flip = flip;
+			let (before, after) = self.stack.split_at_mut(i);
+			let parent = &before[i - 1].accumulator;
+			let child = &mut after[0];
+
+			Self::apply_delta(parent, &mut child.accumulator, params, child.delta, flip);
+
+			child.accurate = true;
+			child.flip = flip;
 		}
 	}
 
 	/// Replays one ply's feature changes, branching on move type exactly the
-	/// way `Board::make_move` does - just toggling accumulator features
-	/// instead of bitboards.
-	fn apply_delta(acc: &mut Accumulator, params: &NNUEParams, delta: MoveDelta, flip: [bool; 2]) {
+	/// way `Board::make_move` does - one fused `out = input + added - removed`
+	/// pass per move instead of toggling features one by one.
+	fn apply_delta(
+		input: &Accumulator,
+		out: &mut Accumulator,
+		params: &NNUEParams,
+		delta: MoveDelta,
+		flip: [bool; 2],
+	) {
 		let mv = delta.mv;
 		let piece = delta.piece;
 		let from = mv.from();
@@ -609,28 +858,42 @@ impl NNUE {
 
 		if mv.is_castling() {
 			let (rook_from, rook_to) = castling_rook_squares(stm, mv.flag());
-			forward::remove_feature(acc, params, piece, from, flip);
-			forward::add_feature(acc, params, piece, to, flip);
 			let rook = Piece::new(stm, PieceType::Rook);
-			forward::remove_feature(acc, params, rook, rook_from, flip);
-			forward::add_feature(acc, params, rook, rook_to, flip);
+
+			forward::add2_sub2(
+				out,
+				input,
+				params,
+				(piece, to),
+				(rook, rook_to),
+				(piece, from),
+				(rook, rook_from),
+				flip,
+			);
 		} else if mv.is_en_passant() {
-			forward::remove_feature(acc, params, piece, from, flip);
-			forward::add_feature(acc, params, piece, to, flip);
 			let cap_sq = to.shift(-UP_DIR[stm]);
 			let captured_pawn = Piece::new(!stm, PieceType::Pawn);
-			forward::remove_feature(acc, params, captured_pawn, cap_sq, flip);
-		} else {
-			if mv.is_capture() {
-				forward::remove_feature(acc, params, delta.captured, to, flip);
-			}
-			forward::remove_feature(acc, params, piece, from, flip);
 
-			if mv.is_promotion() {
-				let promoted = Piece::new(stm, mv.promotion_piece_type());
-				forward::add_feature(acc, params, promoted, to, flip);
+			forward::add_sub2(
+				out,
+				input,
+				params,
+				(piece, to),
+				(piece, from),
+				(captured_pawn, cap_sq),
+				flip,
+			);
+		} else {
+			let final_piece = if mv.is_promotion() {
+				Piece::new(stm, mv.promotion_piece_type())
 			} else {
-				forward::add_feature(acc, params, piece, to, flip);
+				piece
+			};
+
+			if mv.is_capture() {
+				forward::add_sub2(out, input, params, (final_piece, to), (piece, from), (delta.captured, to), flip);
+			} else {
+				forward::add_sub(out, input, params, (final_piece, to), (piece, from), flip);
 			}
 		}
 	}
