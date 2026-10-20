@@ -100,6 +100,23 @@ impl SearchData {
 		}
 	}
 
+	/// Back to `new`'s state for a new game, reusing the history and PV tables instead of allocating fresh ones
+	/// (datagen starts a game every second or so on every thread, and allocating and freeing them each time
+	/// serialised 100+ thread machines in the kernel). The TT is in `shared_data`: clear that separately.
+	pub fn reset_for_new_game(&mut self) {
+		self.board = Board::startpos();
+		self.completed_depth = 0;
+		self.pawn_correction_history.clear();
+		self.killers = Killers::default();
+		self.nnue.reset(&self.board);
+		self.noisy_history.clear();
+		self.pv_table.reset();
+		self.quiet_history.clear();
+		self.root_move = RootMove::default();
+		self.time_manager = TimeManager::new(Limits::Infinite, 0, 0);
+		self.stack = SearchStack::default();
+	}
+
 	pub fn new_search(&mut self) {
 		self.completed_depth = 0;
 		self.killers = Killers::default();
@@ -246,6 +263,12 @@ pub struct PrincipalVariationTable {
 impl PrincipalVariationTable {
 	pub const fn clear(&mut self, ply: usize) {
 		self.len[ply] = 0;
+	}
+
+	/// Back to how `default()` makes it, without reallocating
+	pub fn reset(&mut self) {
+		self.table.iter_mut().for_each(|line| *line = [Move::NONE; MAX_PLY + 1]);
+		self.len = [0; MAX_PLY + 1];
 	}
 
 	pub fn update(&mut self, ply: usize, mv: Move) {

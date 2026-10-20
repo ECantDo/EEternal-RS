@@ -23,6 +23,12 @@ fn zeroed_box<T>() -> Box<T> {
 	}
 }
 
+/// Back to how `zeroed_box` made it, without reallocating
+fn zero_in_place<T>(b: &mut Box<T>) {
+	// SAFETY: only used on the integer tables `zeroed_box` makes, whose fresh state is all-zero bytes
+	unsafe { std::ptr::write_bytes(&mut **b as *mut T, 0, 1) }
+}
+
 fn apply_bonus<const MAX: i32>(entry: &mut i16, bonus: i32) {
 	let bonus = bonus.clamp(-MAX, MAX);
 	*entry += (bonus - bonus.abs() * (*entry) as i32 / MAX) as i16;
@@ -48,6 +54,13 @@ impl QuietHistory {
 		let entry = &mut self.entries[stm][threats.contains(mv.from()) as usize]
 			[threats.contains(mv.to()) as usize][mv.from()][mv.to()];
 		apply_bonus::<{ Self::MAX_HISTORY }>(entry, bonus);
+	}
+}
+
+impl QuietHistory {
+	/// Fresh (all zero) again, reusing the allocation
+	pub fn clear(&mut self) {
+		zero_in_place(&mut self.entries);
 	}
 }
 
@@ -87,6 +100,13 @@ impl NoisyHistory {
 	}
 }
 
+impl NoisyHistory {
+	/// Fresh (all zero) again, reusing the allocation
+	pub fn clear(&mut self) {
+		zero_in_place(&mut self.entries);
+	}
+}
+
 impl Default for NoisyHistory {
 	fn default() -> Self {
 		Self {
@@ -122,6 +142,13 @@ impl CorrectionHistory {
 	pub fn update(&mut self, stm: Color, pawn_key: u64, bonus: i32) {
 		let entry = &mut self.entries[stm][pawn_key as usize & Self::MASK];
 		apply_bonus::<{ Self::MAX_HISTORY }>(entry, bonus);
+	}
+}
+
+impl CorrectionHistory {
+	/// Fresh (all zero) again, reusing the allocation
+	pub fn clear(&mut self) {
+		zero_in_place(&mut self.entries);
 	}
 }
 

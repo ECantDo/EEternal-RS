@@ -212,12 +212,23 @@ fn worker(id: usize, nodes: u64, games: u64, path: String) -> std::io::Result<u6
 	let mut out = BufWriter::new(File::create(&path)?);
 	let mut positions = 0;
 
+	// One set of search state per thread, cleared between games. A new SharedData/SearchData every game
+	// meant allocating and freeing ~33 MB (two TTs, the history and PV tables) per game, and on 100+ thread
+	// machines the kernel's bookkeeping for that serialised the threads: cores mostly idle, each thread 8-10x
+	// slower than on a 20-thread desktop.
+	let mut shared_data = SharedData::new();
+	shared_data.tt.resize(HASH_MB);
+	let mut search_data = SearchData::new(Arc::new(shared_data));
+
 	for n in 1..=games {
 		// Fresh history/TT every game, like chessEngine's globalTT.clear()
-		// (a new SharedData is a cleared TT; it can't be cleared through the Arc)
-		let mut shared_data = SharedData::new();
-		shared_data.tt.resize(HASH_MB);
-		let mut search_data = SearchData::new(Arc::new(shared_data));
+		if n > 1 {
+			search_data.reset_for_new_game();
+			Arc::get_mut(&mut search_data.shared_data)
+				.expect("a datagen worker's SharedData isn't shared")
+				.tt
+				.clear();
+		}
 
 		let (board, viri) = loop {
 			if let Some(opening) = random_opening(&mut rng, &mut search_data) {
