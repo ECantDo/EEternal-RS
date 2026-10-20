@@ -48,6 +48,10 @@ pub fn run_uci() {
 				println!("id author ECanDo");
 				println!("option name EvalFile type string default <empty>");
 				println!(
+					"option name Net type combo default {} var big var small",
+					crate::nnue::DEFAULT_NET.name()
+				);
+				println!(
 					"option name Hash type spin default {} min {} max {}",
 					Settings::DEFAULT_TT_SIZE_MB,
 					Settings::TT_MIN_SIZE,
@@ -102,6 +106,16 @@ pub fn run_uci() {
 				break;
 			}
 			"d" => println!("{board}"),
+			"eval" => {
+				// static NNUE eval of the current position, side to move relative (bullet's checkpoint eval matches it)
+				let mut nnue = crate::nnue::NNUE::new();
+				nnue.reset(&board);
+				println!(
+					"NNUE eval ({} net): {} cp",
+					crate::nnue::active_net().name(),
+					nnue.evaluate(&board)
+				);
+			}
 			"bench" => {
 				let args: Vec<&str> = rest.split_whitespace().collect();
 				crate::utils::bench::bench::<true>(&args);
@@ -276,8 +290,20 @@ fn handle_setoption(rest: &str, shared_data: &mut Arc<SharedData>) {
 			return;
 		}
 		match crate::nnue::init_from_file(value) {
-			Ok(()) => println!("info string Loaded NNUE network from {value}"),
+			Ok(net) => println!(
+				"info string Loaded NNUE network from {value} as the {} net",
+				net.name()
+			),
 			Err(e) => eprintln!("info string {e}"),
+		}
+	} else if name.eq_ignore_ascii_case("Net") {
+		// big: strongest per node; small: about 1.4x the speed (the default without AVX2)
+		match crate::nnue::NetSize::parse(value) {
+			Some(net) => {
+				crate::nnue::set_net(net);
+				println!("info string Using the {} net", net.name());
+			}
+			None => eprintln!("info string Net is big or small, not {value}"),
 		}
 	} else if name.eq_ignore_ascii_case("Hash") {
 		match Arc::get_mut(shared_data) {
