@@ -14,6 +14,9 @@ Qiles Corey, from the
 [Stockfish Discord](https://discord.gg/GWDRS3kU6R) (roughly 360 engines played, some of the top engines were included).
 My current goal is to get the engine back to where I left the C++ engine, then get to 3000+ ELO.
 
+**Want to help?** Donate spare CPU time to generate NNUE training data: download the client from
+[chess.ecando.ca/datagen](https://chess.ecando.ca/datagen#help) (Linux / Windows) and ask me for a token.
+
 ---
 
 ## Approx Elo
@@ -143,6 +146,13 @@ The following UCI commands are implemented:
 | Option Name | Default Value | Type | Range     |
 |-------------|---------------|------|-----------|
 | Hash        | 16 (mb)       | spin | 1 to 4096 |
+
+---
+
+## Thanks
+
+A big thank you to everyone who donated CPU time to generate NNUE training data, for this engine and the C++ one before
+it. The full list, with how many positions each person contributed, is in [docs/contributors.md](docs/contributors.md).
 
 ---
 
