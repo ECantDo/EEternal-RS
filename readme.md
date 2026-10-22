@@ -25,7 +25,7 @@ Time control: `10+0.1` (10 seconds, plus 0.1 seconds per move), 16MB hash.
 
 | Version | Approx Elo | Games | Opponents | Opponent Elo | Results |
 |---------|------------|-------|-----------|--------------|---------|
-| [0.2.6](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.2.6) | **3567 +/- 17** | 1408 | 22 | 3219 to 3525 | [games](docs/elo_results.md#026) |
+| [0.2.6](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.2.6) | **3579 +/- 14** | 1856 | 22 | 3219 to 3525 | [games](docs/elo_results.md#026) |
 | [0.2.5](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.2.5) | **3418 +/- 24** | 512 | 8 | 3270 to 3511 | [games](docs/elo_results.md#025) |
 | [0.2.3](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.2.3) | **3410 +/- 15** | 1664 | 26 | 3130 to 3525 | [games](docs/elo_results.md#023) |
 | [0.2.2](https://github.com/ECantDo/EEternal-RS/releases/tag/V0.2.2) | **3422 +/- 15** | 1664 | 26 | 3130 to 3525 | [games](docs/elo_results.md#022) |
@@ -70,7 +70,7 @@ Time control: `60+0.1` (60 seconds, plus 0.1 seconds per move), 128MB hash.
 
 | Tested Version | Approx Elo\*            | VS                                                                                 | WLD                                                                   | Opponent CCRL Elo            |
 |----------------|-------------------------|------------------------------------------------------------------------------------|-----------------------------------------------------------------------|------------------------------|
-| 0.2.6          | **3546 +/- 17**         | `Wahoo 4.0.0`, `Pounce 3.0.0`, `StockNemo 5.7.0.0`, `Mantissa 3.7.2`, `Stash 37.0` | (282, 5, 33), (249, 6, 65), (222, 5, 93), (209, 17, 94), (154, 63, 103) | 3094, 3219, 3270, 3311, 3419 |
+| 0.2.6          | **3544 +/- 15**         | `Wahoo 4.0.0`, `Pounce 3.0.0`, `StockNemo 5.7.0.0`, `Mantissa 3.7.2`, `Stash 37.0`, `Stormphrax 3.0.0`, `Reckless 0.7.0`, `Stockfish 10`, `Viridithas 9.0.0`| (282, 5, 33), (249, 6, 65), (222, 5, 93), (209, 17, 94), (154, 63, 103), (28, 6, 30), (17, 17, 30), (23, 20, 21), (23, 22, 19)| 3094, 3219, 3270, 3311, 3419, 3485, 3492, 3509, 3511|
 | 0.2.1          | **3400 +/- 20**         | `Wahoo 4.0.0`, `Pounce 3.0.0`, `StockNemo 5.7.0.0`, `Mantissa 3.7.2`, `Stash 37.0` | (117, 6, 37), (99, 10, 51), (82, 13, 64), (58, 33, 69), (45, 62, 53)  | 3094, 3219, 3270, 3311, 3419 |
 | 0.2.0          | **3388 +/- 19** \[#144] | `Wahoo 4.0.0`, `Pounce 3.0.0`, `StockNemo 5.7.0.0`, `Mantissa 3.7.2`, `Stash 37.0` | (158, 5, 37), (113, 20, 67), (97, 26, 77), (76, 51, 73), (57, 80, 63) | 3094, 3219, 3270, 3311, 3419 |
 | 0.1.13         | **3344 +/- 21** \[#155] | `Wahoo 4.0.0`, `Pounce 3.0.0`, `StockNemo 5.7.0.0`, `Mantissa 3.7.2`, `Stash 37.0` | (115, 13, 32), (78, 24, 58), (63, 32, 65), (59, 44, 57), (42, 75, 43) | 3094, 3219, 3270, 3311, 3419 |
