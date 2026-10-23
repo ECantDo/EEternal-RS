@@ -34,6 +34,7 @@ use crate::{
 		castling::castling_rook_squares,
 		color::Color,
 		moves::Move,
+		bitboard::Bitboard,
 		piece::{Piece, PieceType},
 		square::Square,
 	},
@@ -329,22 +330,36 @@ mod forward {
 		)
 	}
 
-	pub fn add_feature<const H: usize>(
-		acc: &mut Accumulator<H>,
-		params: &NNUEParams<H>,
-		piece: Piece,
-		square: Square,
-		slots: [KingSlot; 2],
-	) {
-		let (idx, midx) = indices(piece, square, slots);
+	/// One perspective's input row: the same as that half of `indices`.
+	pub(super) fn index(persp: Color, piece: Piece, square: Square, slot: KingSlot) -> usize {
+		let (piece, square) = match persp {
+			Color::White => (piece, square),
+			Color::Black => (Piece::new(!piece.color(), piece.piece_type()), square.flip_rank()),
+		};
+		let square = if slot.flip { square.flip_file() } else { square };
+		slot.offset + feature_index(piece, square)
+	}
 
+	/// One perspective's half += one input row (Finny table refreshes)
+	pub fn add_row<const H: usize>(half: &mut [i16; H], params: &NNUEParams<H>, idx: usize) {
 		#[cfg(target_feature = "avx2")]
 		unsafe {
-			avx2::add(acc, params, idx, midx);
+			avx2::add_half(half, &params.input_weights[idx]);
 		}
 		#[cfg(not(target_feature = "avx2"))]
-		scalar::add(acc, params, idx, midx);
+		scalar::add_half(half, &params.input_weights[idx]);
 	}
+
+	/// One perspective's half -= one input row (Finny table refreshes)
+	pub fn sub_row<const H: usize>(half: &mut [i16; H], params: &NNUEParams<H>, idx: usize) {
+		#[cfg(target_feature = "avx2")]
+		unsafe {
+			avx2::sub_half(half, &params.input_weights[idx]);
+		}
+		#[cfg(not(target_feature = "avx2"))]
+		scalar::sub_half(half, &params.input_weights[idx]);
+	}
+
 
 	// ---- fused updates: `out = input + added - removed`, in one pass over the accumulator ----
 
@@ -435,22 +450,18 @@ mod forward {
 		use crate::nnue::{QA, QB, SCALE};
 		use crate::types::color::Color;
 
-		pub fn add<const H: usize>(
-			acc: &mut Accumulator<H>,
-			params: &NNUEParams<H>,
-			idx: usize,
-			midx: usize,
-		) {
-			let weights = &params.input_weights[idx];
+		pub fn add_half<const H: usize>(half: &mut [i16; H], weights: &[i16; H]) {
 			for i in 0..H {
-				acc.white[i] = acc.white[i].wrapping_add(weights[i]);
-			}
-
-			let mirrored_weights = &params.input_weights[midx];
-			for i in 0..H {
-				acc.black[i] = acc.black[i].wrapping_add(mirrored_weights[i]);
+				half[i] = half[i].wrapping_add(weights[i]);
 			}
 		}
+
+		pub fn sub_half<const H: usize>(half: &mut [i16; H], weights: &[i16; H]) {
+			for i in 0..H {
+				half[i] = half[i].wrapping_sub(weights[i]);
+			}
+		}
+
 
 		// Fused updates. Wrapping math like the SIMD versions: an intermediate sum may overflow i16,
 		// the final value is still right.
@@ -567,13 +578,25 @@ mod forward {
 		use std::arch::x86_64::*;
 
 		#[target_feature(enable = "avx2")]
-		unsafe fn add_half<const H: usize>(half: &mut [i16; H], weights: &[i16; H]) {
+		pub unsafe fn add_half<const H: usize>(half: &mut [i16; H], weights: &[i16; H]) {
 			unsafe {
 				for i in (0..H).step_by(16) {
 					let acc = _mm256_loadu_si256(half.as_ptr().add(i) as *const __m256i);
 					let w = _mm256_loadu_si256(weights.as_ptr().add(i) as *const __m256i);
 					let sum = _mm256_add_epi16(acc, w);
 					_mm256_storeu_si256(half.as_mut_ptr().add(i) as *mut __m256i, sum);
+				}
+			}
+		}
+
+		#[target_feature(enable = "avx2")]
+		pub unsafe fn sub_half<const H: usize>(half: &mut [i16; H], weights: &[i16; H]) {
+			unsafe {
+				for i in (0..H).step_by(16) {
+					let acc = _mm256_loadu_si256(half.as_ptr().add(i) as *const __m256i);
+					let w = _mm256_loadu_si256(weights.as_ptr().add(i) as *const __m256i);
+					let diff = _mm256_sub_epi16(acc, w);
+					_mm256_storeu_si256(half.as_mut_ptr().add(i) as *mut __m256i, diff);
 				}
 			}
 		}
@@ -656,17 +679,6 @@ mod forward {
 			}
 		}
 
-		pub unsafe fn add<const H: usize>(
-			acc: &mut Accumulator<H>,
-			params: &NNUEParams<H>,
-			idx: usize,
-			midx: usize,
-		) {
-			unsafe {
-				add_half(&mut acc.white, &params.input_weights[idx]);
-				add_half(&mut acc.black, &params.input_weights[midx]);
-			}
-		}
 
 		// Fused wrappers: each feature is (white index, black index), see `forward::indices`
 		pub unsafe fn add_sub<const H: usize>(
@@ -819,6 +831,78 @@ impl MoveDelta {
 	}
 }
 
+/// King slots per perspective: 4 buckets x mirrored or not
+const SLOTS: usize = KING_BUCKETS * 2;
+
+fn slot_index(slot: KingSlot) -> usize {
+	(slot.offset / INPUT_SIZE) * 2 + slot.flip as usize
+}
+
+/// One perspective's accumulator half for one king slot, and the pieces it was built from.
+#[derive(Clone, Copy)]
+struct FinnyEntry<const H: usize> {
+	acc: [i16; H],
+	pieces: [[Bitboard; PieceType::NUM]; 2],
+}
+
+/// Finny table: for each perspective and king slot, the last accumulator half built in that slot. A refresh (a king
+/// crossed into another slot) starts from it and only adds/removes the pieces that differ from then, usually a
+/// handful, instead of every piece on the board from the biases.
+struct FinnyTable<const H: usize> {
+	/// `[perspective * SLOTS + slot]`
+	entries: Box<[FinnyEntry<H>]>,
+	/// The weights the entries were built from; different weights (a new EvalFile) start the table over
+	params: Option<Arc<NNUEParams<H>>>,
+}
+
+impl<const H: usize> FinnyTable<H> {
+	fn new() -> Self {
+		let empty = FinnyEntry {
+			acc: [0; H],
+			pieces: [[Bitboard::default(); PieceType::NUM]; 2],
+		};
+		Self {
+			entries: vec![empty; 2 * SLOTS].into_boxed_slice(),
+			params: None,
+		}
+	}
+
+	/// Every entry back to "no pieces": just the biases. The first refresh in a slot then adds every piece.
+	fn clear(&mut self, params: &Arc<NNUEParams<H>>) {
+		for e in self.entries.iter_mut() {
+			e.acc = params.input_biases;
+			e.pieces = [[Bitboard::default(); PieceType::NUM]; 2];
+		}
+		self.params = Some(params.clone());
+	}
+
+	/// `persp`'s accumulator half for `board`, with its king in `slot`, into `out`.
+	fn refresh(&mut self, params: &Arc<NNUEParams<H>>, board: &Board, persp: Color, slot: KingSlot, out: &mut [i16; H]) {
+		if !self.params.as_ref().is_some_and(|p| Arc::ptr_eq(p, params)) {
+			self.clear(params);
+		}
+		let e = &mut self.entries[persp as usize * SLOTS + slot_index(slot)];
+		for color in [Color::White, Color::Black] {
+			for pt in PieceType::ALL {
+				let now = board.colored_pieces(color, pt);
+				let was = e.pieces[color as usize][pt as usize];
+				if now == was {
+					continue;
+				}
+				let piece = Piece::new(color, pt);
+				for square in now & !was {
+					forward::add_row(&mut e.acc, params, forward::index(persp, piece, square, slot));
+				}
+				for square in was & !now {
+					forward::sub_row(&mut e.acc, params, forward::index(persp, piece, square, slot));
+				}
+				e.pieces[color as usize][pt as usize] = now;
+			}
+		}
+		*out = e.acc;
+	}
+}
+
 #[derive(Clone, Copy, Default)]
 struct StackEntry<const H: usize> {
 	accumulator: Accumulator<H>,
@@ -834,6 +918,7 @@ struct Network<const H: usize> {
 	parameters: Option<Arc<NNUEParams<H>>>,
 	stack: Box<[StackEntry<H>]>,
 	index: usize,
+	finny: FinnyTable<H>,
 }
 
 impl<const H: usize> Network<H> {
@@ -842,6 +927,7 @@ impl<const H: usize> Network<H> {
 			parameters,
 			stack: vec![StackEntry::default(); MAX_PLY + 1].into_boxed_slice(),
 			index: 0,
+			finny: FinnyTable::new(),
 		}
 	}
 
@@ -856,18 +942,11 @@ impl<const H: usize> Network<H> {
 			return;
 		};
 
-		let entry = &mut self.stack[self.index];
-		entry.accumulator.white = params.input_biases;
-		entry.accumulator.black = params.input_biases;
+		// Each perspective from its king slot's Finny entry, fixing up only the pieces that changed since
 		let slots = king_slots(board);
-
-		for i in 0..Square::NUM as u8 {
-			let square = Square::new(i);
-			let piece = board.get_piece_on_square(square);
-			if piece != Piece::None {
-				forward::add_feature(&mut entry.accumulator, &params, piece, square, slots);
-			}
-		}
+		let entry = &mut self.stack[self.index];
+		self.finny.refresh(&params, board, Color::White, slots[0], &mut entry.accumulator.white);
+		self.finny.refresh(&params, board, Color::Black, slots[1], &mut entry.accumulator.black);
 
 		entry.accurate = true;
 		entry.slots = slots;
