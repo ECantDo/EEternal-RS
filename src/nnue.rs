@@ -1223,6 +1223,8 @@ pub struct NNUE {
 	big: Network<BIG_HIDDEN>,
 	small: Network<SMALL_HIDDEN>,
 	use_small: bool,
+	/// This instance always uses this net, whatever `set_net` says (datagen's big-vs-small games)
+	forced: Option<NetSize>,
 }
 
 impl NNUE {
@@ -1234,7 +1236,13 @@ impl NNUE {
 			big: Network::new(BIG_PARAMS.read().unwrap().clone()),
 			small: Network::new(SMALL_PARAMS.read().unwrap().clone()),
 			use_small: active_net() == NetSize::Small,
+			forced: None,
 		}
+	}
+
+	/// Pin this instance to one net (`None`: follow `set_net` again). Takes effect at the next `reset`.
+	pub fn force_net(&mut self, net: Option<NetSize>) {
+		self.forced = net;
 	}
 
 	pub fn is_active(&self) -> bool {
@@ -1250,7 +1258,7 @@ impl NNUE {
 	/// the position changes wholesale (new search, `position` command) rather
 	/// than via incremental moves.
 	pub fn reset(&mut self, board: &Board) {
-		self.use_small = active_net() == NetSize::Small;
+		self.use_small = self.forced.unwrap_or_else(active_net) == NetSize::Small;
 		if self.use_small {
 			self.small.reset(board);
 		} else {
@@ -1419,6 +1427,26 @@ mod tests {
 	fn incremental_matches_refresh_small() {
 		assert!(try_init_embedded());
 		incremental_matches_refresh(|| Network::new(SMALL_PARAMS.read().unwrap().clone()));
+	}
+
+	/// A pinned NNUE uses its own net whatever the global choice is (datagen's big-vs-small games)
+	#[test]
+	fn forced_net_ignores_set_net() {
+		let _guard = NET_LOCK.lock().unwrap();
+		assert!(try_init_embedded());
+		let board = Board::parse_fen_string("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1").unwrap();
+		let eval_with = |global: NetSize, forced: Option<NetSize>| {
+			set_net(global);
+			let mut nnue = NNUE::new();
+			nnue.force_net(forced);
+			nnue.reset(&board);
+			nnue.evaluate(&board)
+		};
+		let (big, small) = (eval_with(NetSize::Big, None), eval_with(NetSize::Small, None));
+		assert_ne!(big, small, "the two nets should disagree on this position");
+		assert_eq!(eval_with(NetSize::Small, Some(NetSize::Big)), big);
+		assert_eq!(eval_with(NetSize::Big, Some(NetSize::Small)), small);
+		set_net(DEFAULT_NET);
 	}
 
 	/// Left-right mirror of a FEN, without castling rights (they don't mirror).

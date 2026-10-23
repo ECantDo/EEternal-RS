@@ -1,8 +1,12 @@
 //! Self-play training data for the NNUE, written as viriformat (what bullet's `ViriBinpackLoader` reads).
 //! Only compiled with `--features data_gen`. Run it from UCI:
 //!
-//!     datagen <threads> <nodes> <games per thread> <output prefix>
+//!     datagen <threads> <nodes> <games per thread> <output prefix> [self | adversarial]
 //!     datagen 20 5000 10000 data/run1      -> data/run1_0.vf ... data/run1_19.vf
+//!
+//! `adversarial`: every game is the big (1024) net against the small (512) one, each with its own search state and
+//! hash, colours swapped every game; each move is recorded with the eval of the side that played it. Builds with the
+//! `datagen_adversarial` feature default to it, so the datagen client (which doesn't pass a mode) can run either.
 //!
 //! A viriformat game is the starting position plus every move played with the eval of the position it
 //! was played from (white-relative), and the result. Every move has to be recorded, so nothing is
@@ -30,6 +34,7 @@ use viriformat::{
 
 use crate::{
 	board::{Board, generate_moves::AllMoves},
+	nnue::NetSize,
 	search::{
 		NoOutput, start_search,
 		search_types::{SearchData, SharedData},
@@ -52,6 +57,28 @@ const DRAW_ADJ_MIN_PLY: usize = 40; // after move 40 ...
 const DRAW_ADJ_EVAL: i32 = 15; // ... |eval| at most this ...
 const DRAW_ADJ_PLIES: u32 = 8; // ... this many plies in a row: draw
 const HASH_MB: usize = 16;
+
+/// Who plays the games
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Pairing {
+	/// One search state and net for both sides (the net `set_net` picks)
+	SelfPlay,
+	/// The big net against the small net, each with its own search state and hash
+	BigVsSmall,
+}
+
+impl Pairing {
+	/// `datagen_adversarial` builds default to big vs small (the client runs `datagen` without a mode)
+	const DEFAULT: Pairing = if cfg!(feature = "datagen_adversarial") { Pairing::BigVsSmall } else { Pairing::SelfPlay };
+
+	fn parse(s: &str) -> Option<Self> {
+		match s {
+			"self" => Some(Pairing::SelfPlay),
+			"adversarial" => Some(Pairing::BigVsSmall),
+			_ => None,
+		}
+	}
+}
 
 /// xorshift64*: good enough for picking opening moves, and no `rand` dependency
 struct Rng(u64);
@@ -145,7 +172,8 @@ fn random_opening(rng: &mut Rng, search_data: &mut SearchData) -> Option<(Board,
 }
 
 /// Plays one game from `board` and records every move with its white-relative eval.
-fn play_game(mut board: Board, start: &ViriBoard, search_data: &mut SearchData, nodes: u64) -> Game {
+/// `search` plays the side to move (one search state, or the one whose turn it is).
+fn play_game(mut board: Board, start: &ViriBoard, mut search: impl FnMut(&Board) -> (Move, i32)) -> Game {
 	let mut game = Game::new(start);
 	let mut win_streak = 0;
 	let mut draw_streak = 0;
@@ -169,7 +197,7 @@ fn play_game(mut board: Board, start: &ViriBoard, search_data: &mut SearchData, 
 		}
 
 		let stm = board.side_to_move();
-		let (mv, score) = search(search_data, &board, nodes);
+		let (mv, score) = search(&board);
 		if mv.is_none() {
 			break GameOutcome::Draw(DrawType::Adjudication); // shouldn't happen with legal moves left
 		}
@@ -206,7 +234,17 @@ fn play_game(mut board: Board, start: &ViriBoard, search_data: &mut SearchData, 
 
 /// One worker: its own TT/search state (the node counter lives in SharedData, so it can't be shared
 /// between threads) and its own output file.
-fn worker(id: usize, nodes: u64, games: u64, path: String) -> std::io::Result<u64> {
+/// A worker's search state: its own TT/history (cleared between games), on a pinned net or the global one.
+fn searcher(net: Option<NetSize>) -> SearchData {
+	let mut shared_data = SharedData::new();
+	shared_data.tt.resize(HASH_MB);
+	let mut search_data = SearchData::new(Arc::new(shared_data));
+	search_data.nnue.force_net(net);
+	search_data.reset_for_new_game();
+	search_data
+}
+
+fn worker(id: usize, nodes: u64, games: u64, path: String, pairing: Pairing) -> std::io::Result<u64> {
 	let seed = SystemTime::now().duration_since(UNIX_EPOCH).map_or(0, |d| d.as_nanos() as u64);
 	let mut rng = Rng::new(seed ^ (id as u64).wrapping_mul(0x9E37_79B9_7F4A_7C15));
 	let mut out = BufWriter::new(File::create(&path)?);
@@ -216,26 +254,35 @@ fn worker(id: usize, nodes: u64, games: u64, path: String) -> std::io::Result<u6
 	// meant allocating and freeing ~33 MB (two TTs, the history and PV tables) per game, and on 100+ thread
 	// machines the kernel's bookkeeping for that serialised the threads: cores mostly idle, each thread 8-10x
 	// slower than on a 20-thread desktop.
-	let mut shared_data = SharedData::new();
-	shared_data.tt.resize(HASH_MB);
-	let mut search_data = SearchData::new(Arc::new(shared_data));
+	// Self-play: one searcher on the global net. Big vs small: [0] the big net, [1] the small one.
+	let mut searchers: Vec<SearchData> = match pairing {
+		Pairing::SelfPlay => vec![searcher(None)],
+		Pairing::BigVsSmall => vec![searcher(Some(NetSize::Big)), searcher(Some(NetSize::Small))],
+	};
 
 	for n in 1..=games {
 		// Fresh history/TT every game, like chessEngine's globalTT.clear()
 		if n > 1 {
-			search_data.reset_for_new_game();
-			Arc::get_mut(&mut search_data.shared_data)
-				.expect("a datagen worker's SharedData isn't shared")
-				.tt
-				.clear();
+			for search_data in &mut searchers {
+				search_data.reset_for_new_game();
+				Arc::get_mut(&mut search_data.shared_data)
+					.expect("a datagen worker's SharedData isn't shared")
+					.tt
+					.clear();
+			}
 		}
 
 		let (board, viri) = loop {
-			if let Some(opening) = random_opening(&mut rng, &mut search_data) {
+			if let Some(opening) = random_opening(&mut rng, &mut searchers[0]) {
 				break opening;
 			}
 		};
-		let game = play_game(board, &viri, &mut search_data, nodes);
+		// Big vs small: the big net takes white in odd games, black in even ones
+		let big_color = if n % 2 == 1 { Color::White } else { Color::Black };
+		let game = play_game(board, &viri, |board| {
+			let i = if searchers.len() == 1 || board.side_to_move() == big_color { 0 } else { 1 };
+			search(&mut searchers[i], board, nodes)
+		});
 		positions += game.len() as u64;
 		game.serialise_into(&mut out)?;
 
@@ -253,15 +300,29 @@ fn worker(id: usize, nodes: u64, games: u64, path: String) -> std::io::Result<u6
 pub fn run(args: &[&str]) {
 	let threads: usize = args.first().and_then(|v| v.parse().ok()).unwrap_or(1);
 	let nodes: u64 = args.get(1).and_then(|v| v.parse().ok()).unwrap_or(5000);
+	let pairing = match args.get(4) {
+		None => Pairing::DEFAULT,
+		Some(m) => match Pairing::parse(m) {
+			Some(p) => p,
+			None => {
+				println!("info string datagen: mode is self or adversarial, not {m}");
+				return;
+			}
+		},
+	};
 	let games: u64 = args.get(2).and_then(|v| v.parse().ok()).unwrap_or(100);
 	let prefix = args.get(3).copied().unwrap_or("datagen").to_string();
 
-	println!("info string datagen: {threads} threads x {games} games at {nodes} nodes -> {prefix}_<n>.vf");
+	let who = match pairing {
+		Pairing::SelfPlay => "self-play",
+		Pairing::BigVsSmall => "big (1024) vs small (512) net",
+	};
+	println!("info string datagen: {threads} threads x {games} games at {nodes} nodes, {who} -> {prefix}_<n>.vf");
 
 	let handles: Vec<_> = (0..threads)
 		.map(|id| {
 			let path = format!("{prefix}_{id}.vf");
-			std::thread::spawn(move || worker(id, nodes, games, path))
+			std::thread::spawn(move || worker(id, nodes, games, path, pairing))
 		})
 		.collect();
 

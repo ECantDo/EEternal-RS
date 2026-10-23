@@ -17,6 +17,8 @@ prefetch = []
 razoring = []
 # Self-play training data (viriformat) for the NNUE: the `datagen` UCI command
 data_gen = ["dep:viriformat"]
+# datagen defaults to big (1024) vs small (512) net games instead of self-play (the datagen client passes no mode)
+datagen_adversarial = ["data_gen"]
 
 [profile.release]
 opt-level = 3
