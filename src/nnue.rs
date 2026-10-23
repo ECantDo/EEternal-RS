@@ -53,10 +53,10 @@ pub const SCALE: i32 = 400;
 const _: () = assert!(BIG_HIDDEN % 16 == 0 && SMALL_HIDDEN % 16 == 0);
 
 /// King bucket by the king's square seen from its own side (black's is `sq ^ 56`), files mirrored to a-d (so g1
-/// counts as b1). Rank 1 corner / centre, rank 2, then everything further up. Must match the trainer's KING_BUCKETS_4.
+/// counts as b1). Rank 1 corner / center, rank 2, then everything further up. Must match the trainer's KING_BUCKETS_4.
 #[rustfmt::skip]
 const KING_BUCKET_LAYOUT: [usize; 32] = [
-	0, 0, 1, 1, // rank 1: a/b (castled, mirrored g/h) | c/d (centre, mirrored e/f)
+	0, 0, 1, 1, // rank 1: a/b (castled, mirrored g/h) | c/d (center, mirrored e/f)
 	2, 2, 2, 2, // rank 2
 	3, 3, 3, 3, // ranks 3-8
 	3, 3, 3, 3,
