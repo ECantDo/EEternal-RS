@@ -340,24 +340,43 @@ mod forward {
 		slot.offset + feature_index(piece, square)
 	}
 
-	/// One perspective's half += one input row (Finny table refreshes)
-	pub fn add_row<const H: usize>(half: &mut [i16; H], params: &NNUEParams<H>, idx: usize) {
-		#[cfg(target_feature = "avx2")]
+	// ---- one perspective, any number of rows in one pass (Finny refreshes, one-sided replays) ----
+
+	/// `cache += added - removed`, and `out` gets the result too, in one pass over the half.
+	pub fn refresh_rows<const H: usize>(
+		cache: &mut [i16; H],
+		out: &mut [i16; H],
+		params: &NNUEParams<H>,
+		add: &[usize],
+		sub: &[usize],
+	) {
+		let (cache, out) = (cache.as_mut_ptr(), out.as_mut_ptr());
+		// SAFETY: `cache` is read and written chunk by chunk, each chunk read before it's written; `out` is a
+		// separate `&mut` borrow, so it can't overlap `cache`
 		unsafe {
-			avx2::add_half(half, &params.input_weights[idx]);
+			#[cfg(target_feature = "avx2")]
+			avx2::rows::<H>(cache, cache, out, params, add, sub);
+			#[cfg(not(target_feature = "avx2"))]
+			scalar::rows::<H>(cache, cache, out, params, add, sub);
 		}
-		#[cfg(not(target_feature = "avx2"))]
-		scalar::add_half(half, &params.input_weights[idx]);
 	}
 
-	/// One perspective's half -= one input row (Finny table refreshes)
-	pub fn sub_row<const H: usize>(half: &mut [i16; H], params: &NNUEParams<H>, idx: usize) {
-		#[cfg(target_feature = "avx2")]
+	/// `out = input + added - removed`, in one pass over the half.
+	pub fn replay_rows<const H: usize>(
+		input: &[i16; H],
+		out: &mut [i16; H],
+		params: &NNUEParams<H>,
+		add: &[usize],
+		sub: &[usize],
+	) {
+		let out = out.as_mut_ptr();
+		// SAFETY: `input` is a shared borrow and `out` an exclusive one, so they don't overlap
 		unsafe {
-			avx2::sub_half(half, &params.input_weights[idx]);
+			#[cfg(target_feature = "avx2")]
+			avx2::rows::<H>(input.as_ptr(), out, out, params, add, sub);
+			#[cfg(not(target_feature = "avx2"))]
+			scalar::rows::<H>(input.as_ptr(), out, out, params, add, sub);
 		}
-		#[cfg(not(target_feature = "avx2"))]
-		scalar::sub_half(half, &params.input_weights[idx]);
 	}
 
 
@@ -450,15 +469,28 @@ mod forward {
 		use crate::nnue::{QA, QB, SCALE};
 		use crate::types::color::Color;
 
-		pub fn add_half<const H: usize>(half: &mut [i16; H], weights: &[i16; H]) {
+		/// `out1[i] = out2[i] = input[i] + sum(added rows) - sum(removed rows)`; `input` may be `out1` (in place).
+		pub unsafe fn rows<const H: usize>(
+			input: *const i16,
+			out1: *mut i16,
+			out2: *mut i16,
+			params: &NNUEParams<H>,
+			add: &[usize],
+			sub: &[usize],
+		) {
+			let w = &params.input_weights;
 			for i in 0..H {
-				half[i] = half[i].wrapping_add(weights[i]);
-			}
-		}
-
-		pub fn sub_half<const H: usize>(half: &mut [i16; H], weights: &[i16; H]) {
-			for i in 0..H {
-				half[i] = half[i].wrapping_sub(weights[i]);
+				let mut v = unsafe { *input.add(i) };
+				for &a in add {
+					v = v.wrapping_add(w[a][i]);
+				}
+				for &s in sub {
+					v = v.wrapping_sub(w[s][i]);
+				}
+				unsafe {
+					*out1.add(i) = v;
+					*out2.add(i) = v;
+				}
 			}
 		}
 
@@ -577,26 +609,29 @@ mod forward {
 		use crate::types::color::Color;
 		use std::arch::x86_64::*;
 
+		/// `out1 = out2 = input + sum(added rows) - sum(removed rows)`, 16 lanes at a time: each chunk is loaded once,
+		/// gets every row, and is stored once. `input` may be `out1` (in place: each chunk is read before it's written).
 		#[target_feature(enable = "avx2")]
-		pub unsafe fn add_half<const H: usize>(half: &mut [i16; H], weights: &[i16; H]) {
+		pub unsafe fn rows<const H: usize>(
+			input: *const i16,
+			out1: *mut i16,
+			out2: *mut i16,
+			params: &NNUEParams<H>,
+			add: &[usize],
+			sub: &[usize],
+		) {
+			let w = &params.input_weights;
 			unsafe {
 				for i in (0..H).step_by(16) {
-					let acc = _mm256_loadu_si256(half.as_ptr().add(i) as *const __m256i);
-					let w = _mm256_loadu_si256(weights.as_ptr().add(i) as *const __m256i);
-					let sum = _mm256_add_epi16(acc, w);
-					_mm256_storeu_si256(half.as_mut_ptr().add(i) as *mut __m256i, sum);
-				}
-			}
-		}
-
-		#[target_feature(enable = "avx2")]
-		pub unsafe fn sub_half<const H: usize>(half: &mut [i16; H], weights: &[i16; H]) {
-			unsafe {
-				for i in (0..H).step_by(16) {
-					let acc = _mm256_loadu_si256(half.as_ptr().add(i) as *const __m256i);
-					let w = _mm256_loadu_si256(weights.as_ptr().add(i) as *const __m256i);
-					let diff = _mm256_sub_epi16(acc, w);
-					_mm256_storeu_si256(half.as_mut_ptr().add(i) as *mut __m256i, diff);
+					let mut v = _mm256_loadu_si256(input.add(i) as *const __m256i);
+					for &a in add {
+						v = _mm256_add_epi16(v, _mm256_loadu_si256(w[a].as_ptr().add(i) as *const __m256i));
+					}
+					for &s in sub {
+						v = _mm256_sub_epi16(v, _mm256_loadu_si256(w[s].as_ptr().add(i) as *const __m256i));
+					}
+					_mm256_storeu_si256(out1.add(i) as *mut __m256i, v);
+					_mm256_storeu_si256(out2.add(i) as *mut __m256i, v);
 				}
 			}
 		}
@@ -829,6 +864,32 @@ impl MoveDelta {
 			&& king_slot(self.piece.color(), self.mv.from())
 				!= king_slot(self.piece.color(), self.mv.to())
 	}
+
+	/// The (piece, square) features this move adds and removes, the same cases as `apply_delta`:
+	/// `(added, n_added, removed, n_removed)`.
+	fn changes(self) -> ([(Piece, Square); 2], usize, [(Piece, Square); 2], usize) {
+		let (mv, piece) = (self.mv, self.piece);
+		let (from, to, stm) = (mv.from(), mv.to(), piece.color());
+		if mv.is_castling() {
+			let (rook_from, rook_to) = castling_rook_squares(stm, mv.flag());
+			let rook = Piece::new(stm, PieceType::Rook);
+			([(piece, to), (rook, rook_to)], 2, [(piece, from), (rook, rook_from)], 2)
+		} else if mv.is_en_passant() {
+			let captured_pawn = Piece::new(!stm, PieceType::Pawn);
+			([(piece, to); 2], 1, [(piece, from), (captured_pawn, to.shift(-UP_DIR[stm]))], 2)
+		} else {
+			let final_piece = if mv.is_promotion() {
+				Piece::new(stm, mv.promotion_piece_type())
+			} else {
+				piece
+			};
+			if mv.is_capture() {
+				([(final_piece, to); 2], 1, [(piece, from), (self.captured, to)], 2)
+			} else {
+				([(final_piece, to); 2], 1, [(piece, from); 2], 1)
+			}
+		}
+	}
 }
 
 /// King slots per perspective: 4 buckets x mirrored or not
@@ -882,6 +943,9 @@ impl<const H: usize> FinnyTable<H> {
 			self.clear(params);
 		}
 		let e = &mut self.entries[persp as usize * SLOTS + slot_index(slot)];
+		// At most 32 of each: the first refresh in a slot adds every piece
+		let (mut add, mut sub) = ([0usize; 32], [0usize; 32]);
+		let (mut n_add, mut n_sub) = (0, 0);
 		for color in [Color::White, Color::Black] {
 			for pt in PieceType::ALL {
 				let now = board.colored_pieces(color, pt);
@@ -891,15 +955,17 @@ impl<const H: usize> FinnyTable<H> {
 				}
 				let piece = Piece::new(color, pt);
 				for square in now & !was {
-					forward::add_row(&mut e.acc, params, forward::index(persp, piece, square, slot));
+					add[n_add] = forward::index(persp, piece, square, slot);
+					n_add += 1;
 				}
 				for square in was & !now {
-					forward::sub_row(&mut e.acc, params, forward::index(persp, piece, square, slot));
+					sub[n_sub] = forward::index(persp, piece, square, slot);
+					n_sub += 1;
 				}
 				e.pieces[color as usize][pt as usize] = now;
 			}
 		}
-		*out = e.acc;
+		forward::refresh_rows(&mut e.acc, out, params, &add[..n_add], &sub[..n_sub]);
 	}
 }
 
@@ -998,8 +1064,16 @@ impl<const H: usize> Network<H> {
 			last_accurate -= 1;
 		}
 
-		if ((last_accurate + 1)..=self.index).any(|i| self.stack[i].delta.needs_refresh()) {
-			self.full_refresh(board);
+		// Which perspectives' kings changed slot since the last accurate ply: only those need a refresh
+		let mut refresh = [false; 2];
+		for i in (last_accurate + 1)..=self.index {
+			let delta = self.stack[i].delta;
+			if delta.needs_refresh() {
+				refresh[delta.piece.color() as usize] = true;
+			}
+		}
+		if refresh[0] || refresh[1] {
+			self.refresh_sides(params, board, last_accurate, refresh);
 			return;
 		}
 
@@ -1015,6 +1089,61 @@ impl<const H: usize> Network<H> {
 			child.accurate = true;
 			child.slots = slots;
 		}
+	}
+
+	/// A king changed slot since `last_accurate`: that perspective's half comes from the Finny table, and the other
+	/// half (if its king didn't move to another slot) is replayed from `last_accurate` in one pass over all the plies'
+	/// changes. The plies in between stay inaccurate and get rebuilt the same way if search comes back to them.
+	fn refresh_sides(&mut self, params: &Arc<NNUEParams<H>>, board: &Board, last_accurate: usize, refresh: [bool; 2]) {
+		let index = self.index;
+		let slots = king_slots(board);
+		let (before, after) = self.stack.split_at_mut(index);
+		let parent = &before[last_accurate];
+		let entry = &mut after[0];
+
+		for (p, persp) in [Color::White, Color::Black].into_iter().enumerate() {
+			let out = match persp {
+				Color::White => &mut entry.accumulator.white,
+				Color::Black => &mut entry.accumulator.black,
+			};
+			// Each ply adds/removes at most 2 features; a long gap (rare) just refreshes this side too
+			let plies = index - last_accurate;
+			if refresh[p] || plies > 8 {
+				self.finny.refresh(params, board, persp, slots[p], out);
+				continue;
+			}
+			// Same slot all along (its king didn't change slot), so `slots[p]` is the slot of every ply
+			let (mut add, mut sub) = ([0usize; 16], [0usize; 16]);
+			let (mut n_add, mut n_sub) = (0, 0);
+			for ply in &before[last_accurate + 1..] {
+				let (added, na, removed, nr) = ply.delta.changes();
+				for &(piece, square) in &added[..na] {
+					add[n_add] = forward::index(persp, piece, square, slots[p]);
+					n_add += 1;
+				}
+				for &(piece, square) in &removed[..nr] {
+					sub[n_sub] = forward::index(persp, piece, square, slots[p]);
+					n_sub += 1;
+				}
+			}
+			let (added, na, removed, nr) = entry.delta.changes();
+			for &(piece, square) in &added[..na] {
+				add[n_add] = forward::index(persp, piece, square, slots[p]);
+				n_add += 1;
+			}
+			for &(piece, square) in &removed[..nr] {
+				sub[n_sub] = forward::index(persp, piece, square, slots[p]);
+				n_sub += 1;
+			}
+			let input = match persp {
+				Color::White => &parent.accumulator.white,
+				Color::Black => &parent.accumulator.black,
+			};
+			forward::replay_rows(input, out, params, &add[..n_add], &sub[..n_sub]);
+		}
+
+		entry.accurate = true;
+		entry.slots = slots;
 	}
 
 	/// Replays one ply's feature changes, branching on move type exactly the
