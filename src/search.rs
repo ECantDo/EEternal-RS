@@ -70,6 +70,7 @@ pub fn start_search<Display: DisplayOutput>(search_data: &mut SearchData) -> Mov
 
 	for root_depth in 1..=max_depth {
 		search_data.root_move.previous_score = search_data.root_move.score;
+		search_data.sel_depth = 0;
 
 		// ============ Aspiration Windows ============
 		// Search a narrow window around the last score, widening on fail high/low.
@@ -155,6 +156,7 @@ fn search<Node: NodeType>(
 	debug_assert!(-Score::INF <= alpha && alpha < beta && beta <= Score::INF);
 
 	search_data.shared_data.nodes.increment();
+	search_data.sel_depth = search_data.sel_depth.max(ply as usize + 1);
 
 	if !Node::ROOT && Node::PV {
 		search_data.pv_table.clear(ply as usize);

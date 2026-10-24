@@ -67,6 +67,8 @@ impl SharedData {
 pub struct SearchData {
 	pub board: Board,
 	pub completed_depth: usize,
+	/// The deepest ply this iteration reached, quiescence included (UCI `seldepth`)
+	pub sel_depth: usize,
 	pub pawn_correction_history: CorrectionHistory,
 	pub killers: Killers,
 	pub nnue: NNUE,
@@ -87,6 +89,7 @@ impl SearchData {
 		Self {
 			board,
 			completed_depth: 0,
+			sel_depth: 0,
 			pawn_correction_history: CorrectionHistory::default(),
 			killers: Killers::default(),
 			nnue,
@@ -106,6 +109,7 @@ impl SearchData {
 	pub fn reset_for_new_game(&mut self) {
 		self.board = Board::startpos();
 		self.completed_depth = 0;
+		self.sel_depth = 0;
 		self.pawn_correction_history.clear();
 		self.killers = Killers::default();
 		self.nnue.reset(&self.board);
@@ -173,7 +177,7 @@ impl SearchData {
 		let nodes = self.nodes();
 		let nps: u128 = (nodes as u128) * 1_000_000 / self.elapsed_us().max(1);
 
-		let mut uci_out = String::from(format!("info depth {} ", self.completed_depth));
+		let mut uci_out = String::from(format!("info depth {} seldepth {} ", self.completed_depth, self.sel_depth));
 
 		if self.root_move.score.abs() >= Score::MATE_IN_MAX {
 			uci_out.push_str(&format!(

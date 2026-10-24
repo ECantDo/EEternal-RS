@@ -24,6 +24,7 @@ pub fn qsearch<NODE: NodeType>(
 	// debug_assert!(NODE::PV || alpha == beta - 1);
 
 	search_data.shared_data.nodes.increment();
+	search_data.sel_depth = search_data.sel_depth.max(ply as usize + 1);
 
 	if alpha >= beta {
 		return alpha;
